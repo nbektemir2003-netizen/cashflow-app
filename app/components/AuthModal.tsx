@@ -13,6 +13,7 @@ export default function AuthModal({ onAuthenticated, onSkip }: Props) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -90,18 +91,28 @@ export default function AuthModal({ onAuthenticated, onSkip }: Props) {
               className="w-full bg-gray-700 text-white p-3.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 placeholder-gray-500 text-sm"
               onKeyDown={e => e.key === 'Enter' && handleSubmit()}
             />
-            <input
-              type="password"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              placeholder="Пароль"
-              autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-              className="w-full bg-gray-700 text-white p-3.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 placeholder-gray-500 text-sm"
-              onKeyDown={e => e.key === 'Enter' && handleSubmit()}
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                placeholder="Пароль"
+                autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                className="w-full bg-gray-700 text-white p-3.5 pr-12 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 placeholder-gray-500 text-sm"
+                onKeyDown={e => e.key === 'Enter' && handleSubmit()}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(v => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors text-lg select-none"
+                tabIndex={-1}
+              >
+                {showPassword ? '🙈' : '👁'}
+              </button>
+            </div>
             {mode === 'register' && (
               <input
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 value={confirmPassword}
                 onChange={e => setConfirmPassword(e.target.value)}
                 placeholder="Подтвердите пароль"
