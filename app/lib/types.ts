@@ -1,9 +1,9 @@
-export type CategoryType = 'income' | 'expense'
+export type CategoryGroup = 'income' | 'mandatory' | 'current'
 
 export interface Category {
   id: string
   name: string
-  type: CategoryType
+  group: CategoryGroup
   icon: string
 }
 
@@ -14,6 +14,7 @@ export interface Transaction {
   categoryId: string
   amount: number
   timestamp: number
+  note?: string
 }
 
 export interface AppNotification {

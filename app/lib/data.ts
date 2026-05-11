@@ -1,21 +1,33 @@
-import { Category } from './types'
+import { Category, AnnualPlan } from './types'
 
 export const CATEGORIES: Category[] = [
-  { id: 'salary', name: 'Зарплата', type: 'income', icon: '💼' },
-  { id: 'freelance', name: 'Фриланс', type: 'income', icon: '💻' },
-  { id: 'investments', name: 'Инвестиции', type: 'income', icon: '📈' },
-  { id: 'other_income', name: 'Другие доходы', type: 'income', icon: '💵' },
-  { id: 'housing', name: 'Жильё / Аренда', type: 'expense', icon: '🏠' },
-  { id: 'food', name: 'Еда', type: 'expense', icon: '🍽️' },
-  { id: 'transport', name: 'Транспорт', type: 'expense', icon: '🚗' },
-  { id: 'entertainment', name: 'Развлечения', type: 'expense', icon: '🎮' },
-  { id: 'health', name: 'Здоровье', type: 'expense', icon: '💊' },
-  { id: 'utilities', name: 'Коммунальные', type: 'expense', icon: '⚡' },
-  { id: 'clothing', name: 'Одежда', type: 'expense', icon: '👕' },
-  { id: 'education', name: 'Образование', type: 'expense', icon: '📚' },
-  { id: 'subscriptions', name: 'Подписки', type: 'expense', icon: '📱' },
-  { id: 'other_expense', name: 'Прочие расходы', type: 'expense', icon: '📦' },
+  // Доходы
+  { id: 'salary', name: 'Зарплата', group: 'income', icon: '💼' },
+  { id: 'freelance', name: 'Фриланс / подработка', group: 'income', icon: '💻' },
+  { id: 'investments', name: 'Инвестиции / дивиденды', group: 'income', icon: '📈' },
+  { id: 'other_income', name: 'Другие доходы', group: 'income', icon: '💵' },
+
+  // Обязательные расходы
+  { id: 'rent', name: 'Аренда / ипотека', group: 'mandatory', icon: '🏠' },
+  { id: 'utilities', name: 'Коммунальные услуги', group: 'mandatory', icon: '⚡' },
+  { id: 'loan', name: 'Кредит / рассрочка', group: 'mandatory', icon: '🏦' },
+  { id: 'insurance', name: 'Страховка', group: 'mandatory', icon: '🛡️' },
+  { id: 'subscriptions', name: 'Подписки', group: 'mandatory', icon: '📱' },
+
+  // Текущие расходы
+  { id: 'food', name: 'Еда / продукты', group: 'current', icon: '🍽️' },
+  { id: 'transport', name: 'Транспорт', group: 'current', icon: '🚗' },
+  { id: 'health', name: 'Здоровье / аптека', group: 'current', icon: '💊' },
+  { id: 'entertainment', name: 'Развлечения / кафе', group: 'current', icon: '🎮' },
+  { id: 'clothing', name: 'Одежда / обувь', group: 'current', icon: '👕' },
+  { id: 'education', name: 'Образование', group: 'current', icon: '📚' },
+  { id: 'other_expense', name: 'Прочие расходы', group: 'current', icon: '📦' },
 ]
+
+export const INCOME_CATEGORIES = CATEGORIES.filter(c => c.group === 'income')
+export const MANDATORY_CATEGORIES = CATEGORIES.filter(c => c.group === 'mandatory')
+export const CURRENT_CATEGORIES = CATEGORIES.filter(c => c.group === 'current')
+export const EXPENSE_CATEGORIES = CATEGORIES.filter(c => c.group !== 'income')
 
 export const MONTHS_RU = [
   'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
@@ -31,5 +43,24 @@ export const CURRENCY = '₸'
 
 export function fmt(n: number): string {
   const abs = Math.abs(n)
-  return (n < 0 ? '−' : '') + abs.toLocaleString('ru-RU') + ' ' + CURRENCY
+  return (n < 0 ? '−' : '') + abs.toLocaleString('ru-RU') + ' ₸'
+}
+
+export const EXAMPLE_PLAN: AnnualPlan = {
+  salary: 350000,
+  freelance: 80000,
+  investments: 20000,
+  other_income: 10000,
+  rent: 120000,
+  utilities: 15000,
+  loan: 40000,
+  insurance: 8000,
+  subscriptions: 5000,
+  food: 60000,
+  transport: 20000,
+  health: 10000,
+  entertainment: 25000,
+  clothing: 15000,
+  education: 10000,
+  other_expense: 10000,
 }

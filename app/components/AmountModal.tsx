@@ -7,7 +7,7 @@ interface Props {
   categoryName: string
   categoryIcon: string
   type: 'add' | 'subtract'
-  onConfirm: (amount: number) => void
+  onConfirm: (amount: number, note?: string) => void
   onClose: () => void
 }
 
@@ -15,6 +15,7 @@ const PRESETS = [500, 1000, 5000, 10000, 50000, 100000]
 
 export default function AmountModal({ categoryName, categoryIcon, type, onConfirm, onClose }: Props) {
   const [value, setValue] = useState('')
+  const [note, setNote] = useState('')
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
@@ -27,7 +28,7 @@ export default function AmountModal({ categoryName, categoryIcon, type, onConfir
   const handleConfirm = () => {
     const amount = parseFloat(value.replace(/\s/g, '').replace(',', '.'))
     if (isNaN(amount) || amount <= 0) return
-    onConfirm(amount)
+    onConfirm(amount, note.trim() || undefined)
   }
 
   const isAdd = type === 'add'
@@ -42,7 +43,7 @@ export default function AmountModal({ categoryName, categoryIcon, type, onConfir
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-5">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <span className="text-2xl">{categoryIcon}</span>
             <div>
               <div className="text-gray-400 text-xs">{isAdd ? '+ Добавить' : '− Вычесть'}</div>
@@ -57,7 +58,7 @@ export default function AmountModal({ categoryName, categoryIcon, type, onConfir
           </button>
         </div>
 
-        <div className="relative mb-4">
+        <div className="relative mb-3">
           <input
             type="number"
             value={value}
@@ -72,7 +73,7 @@ export default function AmountModal({ categoryName, categoryIcon, type, onConfir
           </span>
         </div>
 
-        <div className="flex flex-wrap gap-2 mb-5">
+        <div className="flex flex-wrap gap-2 mb-3">
           {PRESETS.map(p => (
             <button
               key={p}
@@ -86,6 +87,15 @@ export default function AmountModal({ categoryName, categoryIcon, type, onConfir
           ))}
         </div>
 
+        <input
+          type="text"
+          value={note}
+          onChange={e => setNote(e.target.value)}
+          placeholder="Комментарий (необязательно)"
+          className="w-full bg-gray-800 text-white p-3 rounded-xl focus:outline-none focus:ring-1 focus:ring-gray-500 placeholder-gray-600 text-sm mb-4"
+          onKeyDown={e => e.key === 'Enter' && handleConfirm()}
+        />
+
         <div className="grid grid-cols-2 gap-3">
           <button
             onClick={onClose}
@@ -97,9 +107,7 @@ export default function AmountModal({ categoryName, categoryIcon, type, onConfir
             onClick={handleConfirm}
             disabled={!value || parseFloat(value) <= 0}
             className={`py-3 rounded-xl font-semibold text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
-              isAdd
-                ? 'bg-green-600 hover:bg-green-500'
-                : 'bg-red-600 hover:bg-red-500'
+              isAdd ? 'bg-green-600 hover:bg-green-500' : 'bg-red-600 hover:bg-red-500'
             }`}
           >
             {isAdd ? 'Добавить' : 'Вычесть'}

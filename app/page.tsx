@@ -1,37 +1,44 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { CATEGORIES, MONTHS_RU } from './lib/data'
+import { INCOME_CATEGORIES, MANDATORY_CATEGORIES, CURRENT_CATEGORIES, MONTHS_RU, fmt } from './lib/data'
 import { AnnualPlan, Transaction, AppNotification } from './lib/types'
-import { getAnnualPlan, saveAnnualPlan, getTransactions, saveTransactions } from './lib/storage'
-import MonthView from './components/MonthView'
+import {
+  getAnnualPlan, saveAnnualPlan,
+  getTransactions, saveTransactions,
+  getOpeningBalances, saveOpeningBalances,
+  monthKey,
+} from './lib/storage'
+import FactView from './components/MonthView'
 import AnnualPlanView from './components/AnnualPlanView'
 import ReportView from './components/ReportView'
 import HistoryView from './components/HistoryView'
 import NotificationToast from './components/NotificationToast'
 
-type Tab = 'month' | 'plan' | 'report' | 'history'
+type Tab = 'fact' | 'plan' | 'report' | 'history'
 
 const TABS: { key: Tab; label: string; icon: string }[] = [
-  { key: 'month', label: 'Месяц', icon: '📅' },
+  { key: 'fact', label: 'Факт', icon: '💸' },
   { key: 'plan', label: 'План', icon: '📋' },
   { key: 'report', label: 'Отчёт', icon: '📊' },
-  { key: 'history', label: 'История', icon: '📈' },
+  { key: 'history', label: 'История', icon: '🗂' },
 ]
 
 export default function Home() {
   const now = new Date()
   const [currentYear, setCurrentYear] = useState(now.getFullYear())
   const [currentMonth, setCurrentMonth] = useState(now.getMonth())
-  const [activeTab, setActiveTab] = useState<Tab>('month')
+  const [activeTab, setActiveTab] = useState<Tab>('fact')
   const [annualPlan, setAnnualPlan] = useState<AnnualPlan>({})
   const [transactions, setTransactions] = useState<Transaction[]>([])
+  const [openingBalances, setOpeningBalances] = useState<Record<string, number>>({})
   const [notifications, setNotifications] = useState<AppNotification[]>([])
   const [isLoaded, setIsLoaded] = useState(false)
 
   useEffect(() => {
     setAnnualPlan(getAnnualPlan())
     setTransactions(getTransactions())
+    setOpeningBalances(getOpeningBalances())
     setIsLoaded(true)
   }, [])
 
@@ -42,15 +49,18 @@ export default function Home() {
 
   const handleAddTransaction = useCallback(
     (transaction: Transaction) => {
-      const newTransactions = [...transactions, transaction]
-      setTransactions(newTransactions)
-      saveTransactions(newTransactions)
+      const updated = [...transactions, transaction]
+      setTransactions(updated)
+      saveTransactions(updated)
 
-      const category = CATEGORIES.find(c => c.id === transaction.categoryId)
-      if (category?.type === 'expense' && transaction.amount > 0) {
+      // Check budget exceeded for expense categories
+      const expenseCat = [...MANDATORY_CATEGORIES, ...CURRENT_CATEGORIES].find(
+        c => c.id === transaction.categoryId,
+      )
+      if (expenseCat && transaction.amount > 0) {
         const planned = annualPlan[transaction.categoryId] || 0
         if (planned > 0) {
-          const actual = newTransactions
+          const actual = updated
             .filter(t => {
               const d = new Date(t.timestamp)
               return (
@@ -67,7 +77,7 @@ export default function Home() {
               {
                 id: `${Date.now()}-${Math.random()}`,
                 message: `Превышение на ${(actual - planned).toLocaleString('ru-RU')} ₸`,
-                categoryName: category.name,
+                categoryName: expenseCat.name,
               },
             ])
           }
@@ -77,51 +87,75 @@ export default function Home() {
     [transactions, annualPlan, currentYear, currentMonth],
   )
 
-  const handleRemoveNotification = useCallback((id: string) => {
-    setNotifications(prev => prev.filter(n => n.id !== id))
-  }, [])
+  const handleSetOpeningBalance = useCallback(
+    (amount: number) => {
+      const key = monthKey(currentYear, currentMonth)
+      const updated = { ...openingBalances, [key]: amount }
+      setOpeningBalances(updated)
+      saveOpeningBalances(updated)
+    },
+    [openingBalances, currentYear, currentMonth],
+  )
+
+  const getOpeningBalance = (year: number, month: number): number => {
+    const key = monthKey(year, month)
+    if (openingBalances[key] !== undefined) return openingBalances[key]
+    // Auto-calculate from previous month
+    if (month === 0 && year === now.getFullYear()) return 0
+    const prevMonth = month === 0 ? 11 : month - 1
+    const prevYear = month === 0 ? year - 1 : year
+    const prevOpening = getOpeningBalance(prevYear, prevMonth)
+    const prevTx = transactions.filter(t => {
+      const d = new Date(t.timestamp)
+      return d.getFullYear() === prevYear && d.getMonth() === prevMonth
+    })
+    const prevIncome = prevTx
+      .filter(t => INCOME_CATEGORIES.find(c => c.id === t.categoryId))
+      .reduce((s, t) => s + t.amount, 0)
+    const prevExpense = prevTx
+      .filter(t => [...MANDATORY_CATEGORIES, ...CURRENT_CATEGORIES].find(c => c.id === t.categoryId))
+      .reduce((s, t) => s + t.amount, 0)
+    return prevOpening + prevIncome - prevExpense
+  }
 
   const prevMonth = () => {
-    if (currentMonth === 0) {
-      setCurrentMonth(11)
-      setCurrentYear(y => y - 1)
-    } else {
-      setCurrentMonth(m => m - 1)
-    }
+    if (currentMonth === 0) { setCurrentMonth(11); setCurrentYear(y => y - 1) }
+    else setCurrentMonth(m => m - 1)
   }
 
   const nextMonth = () => {
-    if (currentMonth === 11) {
-      setCurrentMonth(0)
-      setCurrentYear(y => y + 1)
-    } else {
-      setCurrentMonth(m => m + 1)
-    }
+    if (currentMonth === 11) { setCurrentMonth(0); setCurrentYear(y => y + 1) }
+    else setCurrentMonth(m => m + 1)
   }
 
   if (!isLoaded) {
     return (
       <div className="min-h-screen bg-gray-950 flex items-center justify-center">
-        <div className="text-green-400 text-2xl">💰</div>
+        <div className="text-green-400 text-3xl animate-pulse">💸</div>
       </div>
     )
   }
 
+  const currentOpeningBalance = getOpeningBalance(currentYear, currentMonth)
+
   return (
     <div className="min-h-screen bg-gray-950 text-white flex flex-col">
       {/* Header */}
-      <header className="bg-gray-900/90 border-b border-gray-800 backdrop-blur-sm sticky top-0 z-20">
+      <header className="bg-gray-900/95 border-b border-gray-800 backdrop-blur-sm sticky top-0 z-20">
         <div className="max-w-lg mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-green-400 text-xl">💰</span>
+            <span className="text-xl">💸</span>
             <span className="text-white font-bold text-lg tracking-tight">КЭШ ФЛОУ</span>
           </div>
-          <div className="text-gray-500 text-sm">
-            {MONTHS_RU[currentMonth]} {currentYear}
+          <div className="text-right">
+            <div className="text-gray-400 text-xs">{MONTHS_RU[currentMonth]} {currentYear}</div>
+            <div className={`text-xs font-medium ${currentOpeningBalance >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+              {fmt(currentOpeningBalance)}
+            </div>
           </div>
         </div>
 
-        {/* Tab navigation */}
+        {/* Tabs */}
         <div className="max-w-lg mx-auto flex border-t border-gray-800">
           {TABS.map(tab => (
             <button
@@ -140,21 +174,29 @@ export default function Home() {
         </div>
       </header>
 
-      {/* Main content */}
-      <main className="flex-1 max-w-lg mx-auto w-full px-4 py-4 pb-6">
-        {activeTab === 'month' && (
-          <MonthView
+      {/* Content */}
+      <main className="flex-1 max-w-lg mx-auto w-full px-4 py-4 pb-8">
+        {activeTab === 'fact' && (
+          <FactView
             year={currentYear}
             month={currentMonth}
             annualPlan={annualPlan}
             transactions={transactions}
+            openingBalance={currentOpeningBalance}
             onAddTransaction={handleAddTransaction}
+            onSetOpeningBalance={handleSetOpeningBalance}
             onPrevMonth={prevMonth}
             onNextMonth={nextMonth}
           />
         )}
         {activeTab === 'plan' && (
-          <AnnualPlanView annualPlan={annualPlan} onChange={handlePlanChange} />
+          <AnnualPlanView
+            annualPlan={annualPlan}
+            transactions={transactions}
+            currentYear={currentYear}
+            currentMonth={currentMonth}
+            onChange={handlePlanChange}
+          />
         )}
         {activeTab === 'report' && (
           <ReportView
@@ -172,7 +214,11 @@ export default function Home() {
       {/* Notifications */}
       <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-xs">
         {notifications.map(n => (
-          <NotificationToast key={n.id} notification={n} onDismiss={handleRemoveNotification} />
+          <NotificationToast
+            key={n.id}
+            notification={n}
+            onDismiss={id => setNotifications(prev => prev.filter(x => x.id !== id))}
+          />
         ))}
       </div>
     </div>
