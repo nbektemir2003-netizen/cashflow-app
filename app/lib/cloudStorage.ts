@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import { AnnualPlan, Transaction } from './types'
+import { AnnualPlan, Transaction, Category } from './types'
 
 export async function cloudLoadPlan(userId: string): Promise<AnnualPlan | null> {
   const { data, error } = await supabase
@@ -71,4 +71,20 @@ export async function cloudSaveBalance(userId: string, monthKey: string, amount:
   await supabase
     .from('cashflow_balances')
     .upsert({ user_id: userId, month_key: monthKey, amount })
+}
+
+export async function cloudLoadCategories(userId: string): Promise<Category[] | null> {
+  const { data, error } = await supabase
+    .from('cashflow_categories')
+    .select('categories')
+    .eq('user_id', userId)
+    .maybeSingle()
+  if (error || !data) return null
+  return data.categories as Category[]
+}
+
+export async function cloudSaveCategories(userId: string, categories: Category[]): Promise<void> {
+  await supabase
+    .from('cashflow_categories')
+    .upsert({ user_id: userId, categories })
 }

@@ -1,8 +1,10 @@
-import { AnnualPlan, Transaction } from './types'
+import { AnnualPlan, Transaction, Category } from './types'
+import { DEFAULT_CATEGORIES } from './data'
 
 const PLAN_KEY = 'cashflow_annual_plan'
 const TRANSACTIONS_KEY = 'cashflow_transactions'
 const BALANCES_KEY = 'cashflow_opening_balances'
+const CATEGORIES_KEY = 'cashflow_categories'
 
 export function getAnnualPlan(): AnnualPlan {
   if (typeof window === 'undefined') return {}
@@ -49,4 +51,18 @@ export function saveOpeningBalances(balances: Record<string, number>): void {
 
 export function monthKey(year: number, month: number): string {
   return `${year}-${month}`
+}
+
+export function getStoredCategories(): Category[] {
+  if (typeof window === 'undefined') return DEFAULT_CATEGORIES
+  try {
+    const data = localStorage.getItem(CATEGORIES_KEY)
+    return data ? JSON.parse(data) : DEFAULT_CATEGORIES
+  } catch {
+    return DEFAULT_CATEGORIES
+  }
+}
+
+export function saveStoredCategories(categories: Category[]): void {
+  localStorage.setItem(CATEGORIES_KEY, JSON.stringify(categories))
 }

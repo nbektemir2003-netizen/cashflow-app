@@ -1,10 +1,12 @@
 import { Category, AnnualPlan } from './types'
 
-export const CATEGORIES: Category[] = [
+export const DEFAULT_CATEGORIES: Category[] = [
   // Доходы
   { id: 'salary', name: 'Зарплата', group: 'income', icon: '💼' },
   { id: 'freelance', name: 'Фриланс / подработка', group: 'income', icon: '💻' },
   { id: 'investments', name: 'Инвестиции / дивиденды', group: 'income', icon: '📈' },
+  { id: 'gifts', name: 'Подарки / премии', group: 'income', icon: '🎁' },
+  { id: 'rental_income', name: 'Аренда (сдаю)', group: 'income', icon: '🏡' },
   { id: 'other_income', name: 'Другие доходы', group: 'income', icon: '💵' },
 
   // Обязательные расходы
@@ -13,21 +15,30 @@ export const CATEGORIES: Category[] = [
   { id: 'loan', name: 'Кредит / рассрочка', group: 'mandatory', icon: '🏦' },
   { id: 'insurance', name: 'Страховка', group: 'mandatory', icon: '🛡️' },
   { id: 'subscriptions', name: 'Подписки', group: 'mandatory', icon: '📱' },
+  { id: 'internet', name: 'Связь / интернет', group: 'mandatory', icon: '📡' },
 
   // Текущие расходы
-  { id: 'food', name: 'Еда / продукты', group: 'current', icon: '🍽️' },
+  { id: 'food', name: 'Еда / продукты', group: 'current', icon: '🛒' },
+  { id: 'cafe', name: 'Кафе / рестораны', group: 'current', icon: '🍕' },
   { id: 'transport', name: 'Транспорт', group: 'current', icon: '🚗' },
   { id: 'health', name: 'Здоровье / аптека', group: 'current', icon: '💊' },
-  { id: 'entertainment', name: 'Развлечения / кафе', group: 'current', icon: '🎮' },
+  { id: 'sport', name: 'Спорт / фитнес', group: 'current', icon: '🏋️' },
+  { id: 'beauty', name: 'Красота / гигиена', group: 'current', icon: '💇' },
   { id: 'clothing', name: 'Одежда / обувь', group: 'current', icon: '👕' },
+  { id: 'entertainment', name: 'Развлечения', group: 'current', icon: '🎮' },
   { id: 'education', name: 'Образование', group: 'current', icon: '📚' },
+  { id: 'children', name: 'Дети', group: 'current', icon: '👶' },
+  { id: 'travel', name: 'Путешествия', group: 'current', icon: '✈️' },
   { id: 'other_expense', name: 'Прочие расходы', group: 'current', icon: '📦' },
 ]
 
-export const INCOME_CATEGORIES = CATEGORIES.filter(c => c.group === 'income')
-export const MANDATORY_CATEGORIES = CATEGORIES.filter(c => c.group === 'mandatory')
-export const CURRENT_CATEGORIES = CATEGORIES.filter(c => c.group === 'current')
-export const EXPENSE_CATEGORIES = CATEGORIES.filter(c => c.group !== 'income')
+// Legacy alias so old imports still work (used in HistoryView, ReportView)
+export const CATEGORIES = DEFAULT_CATEGORIES
+
+export const INCOME_CATEGORIES = DEFAULT_CATEGORIES.filter(c => c.group === 'income')
+export const MANDATORY_CATEGORIES = DEFAULT_CATEGORIES.filter(c => c.group === 'mandatory')
+export const CURRENT_CATEGORIES = DEFAULT_CATEGORIES.filter(c => c.group === 'current')
+export const EXPENSE_CATEGORIES = DEFAULT_CATEGORIES.filter(c => c.group !== 'income')
 
 export const MONTHS_RU = [
   'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',

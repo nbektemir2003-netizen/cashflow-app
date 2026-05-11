@@ -1,4 +1,5 @@
 -- Run this in Supabase SQL Editor (supabase.com → your project → SQL Editor)
+-- If upgrading existing project, only run the cashflow_categories block at the bottom.
 
 create table cashflow_plans (
   user_id uuid references auth.users(id) on delete cascade primary key,
@@ -31,3 +32,12 @@ alter table cashflow_balances enable row level security;
 create policy "own data only" on cashflow_plans for all using (auth.uid() = user_id);
 create policy "own data only" on cashflow_transactions for all using (auth.uid() = user_id);
 create policy "own data only" on cashflow_balances for all using (auth.uid() = user_id);
+
+-- Custom categories (add this if upgrading an existing project)
+create table if not exists cashflow_categories (
+  user_id uuid references auth.users(id) on delete cascade primary key,
+  categories jsonb not null default '[]'
+);
+
+alter table cashflow_categories enable row level security;
+create policy "own data only" on cashflow_categories for all using (auth.uid() = user_id);

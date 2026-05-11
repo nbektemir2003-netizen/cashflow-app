@@ -1,18 +1,20 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { INCOME_CATEGORIES, MANDATORY_CATEGORIES, CURRENT_CATEGORIES, MONTHS_RU, fmt } from './lib/data'
-import { AnnualPlan, Transaction, AppNotification } from './lib/types'
+import { MONTHS_RU, fmt, DEFAULT_CATEGORIES } from './lib/data'
+import { AnnualPlan, Transaction, AppNotification, Category } from './lib/types'
 import {
   getAnnualPlan, saveAnnualPlan,
   getTransactions, saveTransactions,
   getOpeningBalances, saveOpeningBalances,
+  getStoredCategories, saveStoredCategories,
   monthKey,
 } from './lib/storage'
 import {
   cloudLoadPlan, cloudSavePlan,
   cloudLoadTransactions, cloudSaveTransaction, cloudUploadAllTransactions,
   cloudLoadBalances, cloudSaveBalance,
+  cloudLoadCategories, cloudSaveCategories,
 } from './lib/cloudStorage'
 import { supabase } from './lib/supabase'
 import FactView from './components/MonthView'
@@ -46,6 +48,7 @@ export default function Home() {
   const [annualPlan, setAnnualPlan] = useState<AnnualPlan>({})
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [openingBalances, setOpeningBalances] = useState<Record<string, number>>({})
+  const [categories, setCategories] = useState<Category[]>(DEFAULT_CATEGORIES)
   const [notifications, setNotifications] = useState<AppNotification[]>([])
 
   // On mount: check existing session
@@ -66,19 +69,18 @@ export default function Home() {
     setUserId(uid)
     setUserEmail(email)
 
-    // Load local data first (for instant display)
     const localPlan = getAnnualPlan()
     const localTx = getTransactions()
     const localBalances = getOpeningBalances()
+    const localCats = getStoredCategories()
 
-    // Load from cloud
-    const [cloudPlan, cloudTx, cloudBalances] = await Promise.all([
+    const [cloudPlan, cloudTx, cloudBalances, cloudCats] = await Promise.all([
       cloudLoadPlan(uid),
       cloudLoadTransactions(uid),
       cloudLoadBalances(uid),
+      cloudLoadCategories(uid),
     ])
 
-    // Merge: if cloud is empty and local has data — upload local to cloud
     const finalPlan = cloudPlan ?? localPlan
     const finalTx = (cloudTx !== null && cloudTx.length > 0)
       ? cloudTx
@@ -86,18 +88,20 @@ export default function Home() {
       ? (await cloudUploadAllTransactions(uid, localTx), localTx)
       : []
     const finalBalances = cloudBalances ?? localBalances
+    const finalCats = cloudCats ?? localCats
 
-    if (!cloudPlan && Object.keys(localPlan).length > 0) {
-      await cloudSavePlan(uid, localPlan)
-    }
+    if (!cloudPlan && Object.keys(localPlan).length > 0) await cloudSavePlan(uid, localPlan)
+    if (!cloudCats) await cloudSaveCategories(uid, finalCats)
 
     setAnnualPlan(finalPlan)
     setTransactions(finalTx)
     setOpeningBalances(finalBalances)
+    setCategories(finalCats)
 
     saveAnnualPlan(finalPlan)
     saveTransactions(finalTx)
     saveOpeningBalances(finalBalances)
+    saveStoredCategories(finalCats)
 
     setSyncing(false)
     setAppMode('app')
@@ -111,6 +115,7 @@ export default function Home() {
     setAnnualPlan(getAnnualPlan())
     setTransactions(getTransactions())
     setOpeningBalances(getOpeningBalances())
+    setCategories(getStoredCategories())
     setAppMode('app')
   }, [])
 
@@ -127,6 +132,12 @@ export default function Home() {
     if (userId) cloudSavePlan(userId, plan)
   }, [userId])
 
+  const handleCategoriesChange = useCallback(async (cats: Category[]) => {
+    setCategories(cats)
+    saveStoredCategories(cats)
+    if (userId) cloudSaveCategories(userId, cats)
+  }, [userId])
+
   const handleAddTransaction = useCallback(
     async (transaction: Transaction) => {
       const updated = [...transactions, transaction]
@@ -134,9 +145,7 @@ export default function Home() {
       saveTransactions(updated)
       if (userId) cloudSaveTransaction(userId, transaction)
 
-      const expenseCat = [...MANDATORY_CATEGORIES, ...CURRENT_CATEGORIES].find(
-        c => c.id === transaction.categoryId,
-      )
+      const expenseCat = categories.filter(c => c.group !== 'income').find(c => c.id === transaction.categoryId)
       if (expenseCat && transaction.amount > 0) {
         const planned = annualPlan[transaction.categoryId] || 0
         if (planned > 0) {
@@ -159,7 +168,7 @@ export default function Home() {
         }
       }
     },
-    [transactions, annualPlan, currentYear, currentMonth, userId],
+    [transactions, annualPlan, currentYear, currentMonth, userId, categories],
   )
 
   const handleSetOpeningBalance = useCallback(
@@ -184,12 +193,10 @@ export default function Home() {
       const d = new Date(t.timestamp)
       return d.getFullYear() === prevYear && d.getMonth() === prevMonth
     })
-    const prevIncome = prevTx
-      .filter(t => INCOME_CATEGORIES.find(c => c.id === t.categoryId))
-      .reduce((s, t) => s + t.amount, 0)
-    const prevExpense = prevTx
-      .filter(t => [...MANDATORY_CATEGORIES, ...CURRENT_CATEGORIES].find(c => c.id === t.categoryId))
-      .reduce((s, t) => s + t.amount, 0)
+    const incomeIds = new Set(categories.filter(c => c.group === 'income').map(c => c.id))
+    const expenseIds = new Set(categories.filter(c => c.group !== 'income').map(c => c.id))
+    const prevIncome = prevTx.filter(t => incomeIds.has(t.categoryId)).reduce((s, t) => s + t.amount, 0)
+    const prevExpense = prevTx.filter(t => expenseIds.has(t.categoryId)).reduce((s, t) => s + t.amount, 0)
     return prevOpening + prevIncome - prevExpense
   }
 
@@ -293,6 +300,7 @@ export default function Home() {
             annualPlan={annualPlan}
             transactions={transactions}
             openingBalance={currentOpeningBalance}
+            categories={categories}
             onAddTransaction={handleAddTransaction}
             onSetOpeningBalance={handleSetOpeningBalance}
             onPrevMonth={prevMonth}
@@ -305,7 +313,9 @@ export default function Home() {
             transactions={transactions}
             currentYear={currentYear}
             currentMonth={currentMonth}
+            categories={categories}
             onChange={handlePlanChange}
+            onCategoriesChange={handleCategoriesChange}
           />
         )}
         {activeTab === 'report' && (

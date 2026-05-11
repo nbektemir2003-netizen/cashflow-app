@@ -1,14 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import {
-  CATEGORIES,
-  INCOME_CATEGORIES,
-  MANDATORY_CATEGORIES,
-  CURRENT_CATEGORIES,
-  MONTHS_RU,
-  fmt,
-} from '../lib/data'
+import { MONTHS_RU, fmt } from '../lib/data'
 import { AnnualPlan, Transaction, Category } from '../lib/types'
 import AmountModal from './AmountModal'
 
@@ -18,6 +11,7 @@ interface Props {
   annualPlan: AnnualPlan
   transactions: Transaction[]
   openingBalance: number
+  categories: Category[]
   onAddTransaction: (t: Transaction) => void
   onSetOpeningBalance: (amount: number) => void
   onPrevMonth: () => void
@@ -37,6 +31,7 @@ export default function FactView({
   annualPlan,
   transactions,
   openingBalance,
+  categories,
   onAddTransaction,
   onSetOpeningBalance,
   onPrevMonth,
@@ -46,6 +41,10 @@ export default function FactView({
   const [editingBalance, setEditingBalance] = useState(false)
   const [balanceInput, setBalanceInput] = useState('')
 
+  const incomeCategories = categories.filter(c => c.group === 'income')
+  const mandatoryCategories = categories.filter(c => c.group === 'mandatory')
+  const currentCategories = categories.filter(c => c.group === 'current')
+
   const monthTx = transactions.filter(t => {
     const d = new Date(t.timestamp)
     return d.getFullYear() === year && d.getMonth() === month
@@ -54,14 +53,14 @@ export default function FactView({
   const getActual = (categoryId: string) =>
     monthTx.filter(t => t.categoryId === categoryId).reduce((sum, t) => sum + t.amount, 0)
 
-  const totalIncomeActual = INCOME_CATEGORIES.reduce((s, c) => s + getActual(c.id), 0)
-  const totalMandatoryActual = MANDATORY_CATEGORIES.reduce((s, c) => s + getActual(c.id), 0)
-  const totalCurrentActual = CURRENT_CATEGORIES.reduce((s, c) => s + getActual(c.id), 0)
+  const totalIncomeActual = incomeCategories.reduce((s, c) => s + getActual(c.id), 0)
+  const totalMandatoryActual = mandatoryCategories.reduce((s, c) => s + getActual(c.id), 0)
+  const totalCurrentActual = currentCategories.reduce((s, c) => s + getActual(c.id), 0)
   const totalExpenseActual = totalMandatoryActual + totalCurrentActual
 
-  const totalIncomePlanned = INCOME_CATEGORIES.reduce((s, c) => s + (annualPlan[c.id] || 0), 0)
-  const totalMandatoryPlanned = MANDATORY_CATEGORIES.reduce((s, c) => s + (annualPlan[c.id] || 0), 0)
-  const totalCurrentPlanned = CURRENT_CATEGORIES.reduce((s, c) => s + (annualPlan[c.id] || 0), 0)
+  const totalIncomePlanned = incomeCategories.reduce((s, c) => s + (annualPlan[c.id] || 0), 0)
+  const totalMandatoryPlanned = mandatoryCategories.reduce((s, c) => s + (annualPlan[c.id] || 0), 0)
+  const totalCurrentPlanned = currentCategories.reduce((s, c) => s + (annualPlan[c.id] || 0), 0)
   const totalExpensePlanned = totalMandatoryPlanned + totalCurrentPlanned
 
   const closingBalance = openingBalance + totalIncomeActual - totalExpenseActual
@@ -133,12 +132,7 @@ export default function FactView({
                 className="flex-1 bg-gray-700 text-white text-sm p-1.5 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 w-0"
                 autoFocus
               />
-              <button
-                onClick={saveBalance}
-                className="text-green-400 text-sm font-medium hover:text-green-300"
-              >
-                ✓
-              </button>
+              <button onClick={saveBalance} className="text-green-400 text-sm font-medium hover:text-green-300">✓</button>
             </div>
           ) : (
             <button
@@ -151,17 +145,9 @@ export default function FactView({
           )}
           <div className="text-gray-600 text-xs mt-0.5">перенос с пред. месяца</div>
         </div>
-        <div
-          className={`rounded-xl p-3 border ${
-            closingBalance >= 0
-              ? 'bg-green-900/20 border-green-800/40'
-              : 'bg-red-900/20 border-red-800/40'
-          }`}
-        >
+        <div className={`rounded-xl p-3 border ${closingBalance >= 0 ? 'bg-green-900/20 border-green-800/40' : 'bg-red-900/20 border-red-800/40'}`}>
           <div className="text-gray-400 text-xs mb-1">Конечный остаток</div>
-          <div
-            className={`font-bold text-sm ${closingBalance >= 0 ? 'text-green-400' : 'text-red-400'}`}
-          >
+          <div className={`font-bold text-sm ${closingBalance >= 0 ? 'text-green-400' : 'text-red-400'}`}>
             {fmt(closingBalance)}
           </div>
           <div className="text-gray-600 text-xs mt-0.5">начало + доходы − расходы</div>
@@ -180,7 +166,7 @@ export default function FactView({
         title="💰 ДОХОДЫ"
         titleColor="text-green-400"
         lineColor="bg-green-900/40"
-        categories={INCOME_CATEGORIES}
+        categories={incomeCategories}
         annualPlan={annualPlan}
         getActual={getActual}
         type="income"
@@ -193,7 +179,7 @@ export default function FactView({
         title="🔒 ОБЯЗАТЕЛЬНЫЕ РАСХОДЫ"
         titleColor="text-orange-400"
         lineColor="bg-orange-900/40"
-        categories={MANDATORY_CATEGORIES}
+        categories={mandatoryCategories}
         annualPlan={annualPlan}
         getActual={getActual}
         type="expense"
@@ -206,7 +192,7 @@ export default function FactView({
         title="🛒 ТЕКУЩИЕ РАСХОДЫ"
         titleColor="text-red-400"
         lineColor="bg-red-900/40"
-        categories={CURRENT_CATEGORIES}
+        categories={currentCategories}
         annualPlan={annualPlan}
         getActual={getActual}
         type="expense"
@@ -227,54 +213,24 @@ export default function FactView({
   )
 }
 
-function SummaryCard({
-  label,
-  actual,
-  planned,
-  color,
-}: {
-  label: string
-  actual: number
-  planned: number
-  color: 'green' | 'orange' | 'red'
-}) {
-  const colors = {
-    green: 'text-green-400',
-    orange: 'text-orange-400',
-    red: 'text-red-400',
-  }
+function SummaryCard({ label, actual, planned, color }: { label: string; actual: number; planned: number; color: 'green' | 'orange' | 'red' }) {
+  const colors = { green: 'text-green-400', orange: 'text-orange-400', red: 'text-red-400' }
   const isOver = color !== 'green' && planned > 0 && actual > planned
   return (
     <div className="bg-gray-800 rounded-xl p-2.5 text-center border border-gray-700/50">
       <div className="text-gray-400 text-xs mb-1">{label}</div>
-      <div className={`font-bold text-xs ${isOver ? 'text-red-400' : colors[color]}`}>
-        {fmt(actual)}
-      </div>
+      <div className={`font-bold text-xs ${isOver ? 'text-red-400' : colors[color]}`}>{fmt(actual)}</div>
       <div className="text-gray-600 text-xs mt-0.5 truncate">/{fmt(planned)}</div>
     </div>
   )
 }
 
 function CategorySection({
-  title,
-  titleColor,
-  lineColor,
-  categories,
-  annualPlan,
-  getActual,
-  type,
-  onAdd,
-  onSubtract,
+  title, titleColor, lineColor, categories, annualPlan, getActual, type, onAdd, onSubtract,
 }: {
-  title: string
-  titleColor: string
-  lineColor: string
-  categories: Category[]
-  annualPlan: AnnualPlan
-  getActual: (id: string) => number
-  type: 'income' | 'expense'
-  onAdd: (cat: Category) => void
-  onSubtract: (cat: Category) => void
+  title: string; titleColor: string; lineColor: string
+  categories: Category[]; annualPlan: AnnualPlan; getActual: (id: string) => number
+  type: 'income' | 'expense'; onAdd: (cat: Category) => void; onSubtract: (cat: Category) => void
 }) {
   return (
     <div className="mb-5">
@@ -308,33 +264,12 @@ function CategorySection({
 }
 
 function CategoryRow({
-  category,
-  planned,
-  actual,
-  pct,
-  isOver,
-  type,
-  onAdd,
-  onSubtract,
+  category, planned, actual, pct, isOver, type, onAdd, onSubtract,
 }: {
-  category: Category
-  planned: number
-  actual: number
-  pct: number
-  isOver: boolean
-  type: 'income' | 'expense'
-  onAdd: () => void
-  onSubtract: () => void
+  category: Category; planned: number; actual: number; pct: number
+  isOver: boolean; type: 'income' | 'expense'; onAdd: () => void; onSubtract: () => void
 }) {
-  const barColor =
-    type === 'income'
-      ? 'bg-green-500'
-      : isOver
-      ? 'bg-red-500'
-      : pct >= 80
-      ? 'bg-orange-500'
-      : 'bg-blue-500'
-
+  const barColor = type === 'income' ? 'bg-green-500' : isOver ? 'bg-red-500' : pct >= 80 ? 'bg-orange-500' : 'bg-blue-500'
   return (
     <div className={`bg-gray-800 rounded-xl p-3 ${isOver ? 'ring-1 ring-red-500/30' : ''}`}>
       <div className="flex items-center gap-3">
@@ -342,43 +277,21 @@ function CategoryRow({
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between gap-1">
             <span className="text-white text-sm font-medium truncate">{category.name}</span>
-            {isOver && (
-              <span className="text-red-400 text-xs flex-shrink-0 bg-red-900/30 px-1.5 py-0.5 rounded">
-                ⚠ превышен
-              </span>
-            )}
+            {isOver && <span className="text-red-400 text-xs flex-shrink-0 bg-red-900/30 px-1.5 py-0.5 rounded">⚠ превышен</span>}
           </div>
           <div className="flex justify-between text-xs text-gray-500 mt-0.5">
-            <span>
-              факт:{' '}
-              <span className={type === 'income' ? 'text-green-400' : isOver ? 'text-red-400' : 'text-gray-300'}>
-                {fmt(actual)}
-              </span>
-            </span>
+            <span>факт: <span className={type === 'income' ? 'text-green-400' : isOver ? 'text-red-400' : 'text-gray-300'}>{fmt(actual)}</span></span>
             <span>{planned > 0 ? `план: ${fmt(planned)}` : 'план не задан'}</span>
           </div>
           {(planned > 0 || actual !== 0) && (
             <div className="mt-2 w-full bg-gray-700 rounded-full h-1">
-              <div
-                className={`h-1 rounded-full transition-all duration-300 ${barColor}`}
-                style={{ width: `${pct}%` }}
-              />
+              <div className={`h-1 rounded-full transition-all duration-300 ${barColor}`} style={{ width: `${pct}%` }} />
             </div>
           )}
         </div>
         <div className="flex gap-1.5 flex-shrink-0">
-          <button
-            onClick={onSubtract}
-            className="w-8 h-8 rounded-full bg-gray-700 hover:bg-red-800/70 text-gray-300 hover:text-white flex items-center justify-center text-lg font-bold transition-colors"
-          >
-            −
-          </button>
-          <button
-            onClick={onAdd}
-            className="w-8 h-8 rounded-full bg-gray-700 hover:bg-green-800/70 text-gray-300 hover:text-white flex items-center justify-center text-lg font-bold transition-colors"
-          >
-            +
-          </button>
+          <button onClick={onSubtract} className="w-8 h-8 rounded-full bg-gray-700 hover:bg-red-800/70 text-gray-300 hover:text-white flex items-center justify-center text-lg font-bold transition-colors">−</button>
+          <button onClick={onAdd} className="w-8 h-8 rounded-full bg-gray-700 hover:bg-green-800/70 text-gray-300 hover:text-white flex items-center justify-center text-lg font-bold transition-colors">+</button>
         </div>
       </div>
     </div>
