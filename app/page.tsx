@@ -9,13 +9,21 @@ import {
   getOpeningBalances, saveOpeningBalances,
   monthKey,
 } from './lib/storage'
+import {
+  cloudLoadPlan, cloudSavePlan,
+  cloudLoadTransactions, cloudSaveTransaction, cloudUploadAllTransactions,
+  cloudLoadBalances, cloudSaveBalance,
+} from './lib/cloudStorage'
+import { supabase } from './lib/supabase'
 import FactView from './components/MonthView'
 import AnnualPlanView from './components/AnnualPlanView'
 import ReportView from './components/ReportView'
 import HistoryView from './components/HistoryView'
 import NotificationToast from './components/NotificationToast'
+import AuthModal from './components/AuthModal'
 
 type Tab = 'fact' | 'plan' | 'report' | 'history'
+type AppMode = 'checking' | 'auth' | 'app'
 
 const TABS: { key: Tab; label: string; icon: string }[] = [
   { key: 'fact', label: 'Факт', icon: '💸' },
@@ -26,34 +34,106 @@ const TABS: { key: Tab; label: string; icon: string }[] = [
 
 export default function Home() {
   const now = new Date()
+  const [appMode, setAppMode] = useState<AppMode>('checking')
+  const [userId, setUserId] = useState<string | null>(null)
+  const [userEmail, setUserEmail] = useState<string | null>(null)
+  const [syncing, setSyncing] = useState(false)
+
   const [currentYear, setCurrentYear] = useState(now.getFullYear())
   const [currentMonth, setCurrentMonth] = useState(now.getMonth())
   const [activeTab, setActiveTab] = useState<Tab>('fact')
+
   const [annualPlan, setAnnualPlan] = useState<AnnualPlan>({})
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [openingBalances, setOpeningBalances] = useState<Record<string, number>>({})
   const [notifications, setNotifications] = useState<AppNotification[]>([])
-  const [isLoaded, setIsLoaded] = useState(false)
 
+  // On mount: check existing session
   useEffect(() => {
+    const init = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session?.user) {
+        await loadForUser(session.user.id, session.user.email!)
+      } else {
+        setAppMode('auth')
+      }
+    }
+    init()
+  }, [])
+
+  const loadForUser = async (uid: string, email: string) => {
+    setSyncing(true)
+    setUserId(uid)
+    setUserEmail(email)
+
+    // Load local data first (for instant display)
+    const localPlan = getAnnualPlan()
+    const localTx = getTransactions()
+    const localBalances = getOpeningBalances()
+
+    // Load from cloud
+    const [cloudPlan, cloudTx, cloudBalances] = await Promise.all([
+      cloudLoadPlan(uid),
+      cloudLoadTransactions(uid),
+      cloudLoadBalances(uid),
+    ])
+
+    // Merge: if cloud is empty and local has data — upload local to cloud
+    const finalPlan = cloudPlan ?? localPlan
+    const finalTx = (cloudTx !== null && cloudTx.length > 0)
+      ? cloudTx
+      : localTx.length > 0
+      ? (await cloudUploadAllTransactions(uid, localTx), localTx)
+      : []
+    const finalBalances = cloudBalances ?? localBalances
+
+    if (!cloudPlan && Object.keys(localPlan).length > 0) {
+      await cloudSavePlan(uid, localPlan)
+    }
+
+    setAnnualPlan(finalPlan)
+    setTransactions(finalTx)
+    setOpeningBalances(finalBalances)
+
+    saveAnnualPlan(finalPlan)
+    saveTransactions(finalTx)
+    saveOpeningBalances(finalBalances)
+
+    setSyncing(false)
+    setAppMode('app')
+  }
+
+  const handleAuthenticated = useCallback(async (uid: string, email: string) => {
+    await loadForUser(uid, email)
+  }, [])
+
+  const handleSkip = useCallback(() => {
     setAnnualPlan(getAnnualPlan())
     setTransactions(getTransactions())
     setOpeningBalances(getOpeningBalances())
-    setIsLoaded(true)
+    setAppMode('app')
   }, [])
 
-  const handlePlanChange = useCallback((plan: AnnualPlan) => {
+  const handleSignOut = async () => {
+    await supabase.auth.signOut()
+    setUserId(null)
+    setUserEmail(null)
+    setAppMode('auth')
+  }
+
+  const handlePlanChange = useCallback(async (plan: AnnualPlan) => {
     setAnnualPlan(plan)
     saveAnnualPlan(plan)
-  }, [])
+    if (userId) cloudSavePlan(userId, plan)
+  }, [userId])
 
   const handleAddTransaction = useCallback(
-    (transaction: Transaction) => {
+    async (transaction: Transaction) => {
       const updated = [...transactions, transaction]
       setTransactions(updated)
       saveTransactions(updated)
+      if (userId) cloudSaveTransaction(userId, transaction)
 
-      // Check budget exceeded for expense categories
       const expenseCat = [...MANDATORY_CATEGORIES, ...CURRENT_CATEGORIES].find(
         c => c.id === transaction.categoryId,
       )
@@ -63,14 +143,9 @@ export default function Home() {
           const actual = updated
             .filter(t => {
               const d = new Date(t.timestamp)
-              return (
-                d.getFullYear() === currentYear &&
-                d.getMonth() === currentMonth &&
-                t.categoryId === transaction.categoryId
-              )
+              return d.getFullYear() === currentYear && d.getMonth() === currentMonth && t.categoryId === transaction.categoryId
             })
             .reduce((sum, t) => sum + t.amount, 0)
-
           if (actual > planned) {
             setNotifications(prev => [
               ...prev,
@@ -84,23 +159,23 @@ export default function Home() {
         }
       }
     },
-    [transactions, annualPlan, currentYear, currentMonth],
+    [transactions, annualPlan, currentYear, currentMonth, userId],
   )
 
   const handleSetOpeningBalance = useCallback(
-    (amount: number) => {
+    async (amount: number) => {
       const key = monthKey(currentYear, currentMonth)
       const updated = { ...openingBalances, [key]: amount }
       setOpeningBalances(updated)
       saveOpeningBalances(updated)
+      if (userId) cloudSaveBalance(userId, key, amount)
     },
-    [openingBalances, currentYear, currentMonth],
+    [openingBalances, currentYear, currentMonth, userId],
   )
 
   const getOpeningBalance = (year: number, month: number): number => {
     const key = monthKey(year, month)
     if (openingBalances[key] !== undefined) return openingBalances[key]
-    // Auto-calculate from previous month
     if (month === 0 && year === now.getFullYear()) return 0
     const prevMonth = month === 0 ? 11 : month - 1
     const prevYear = month === 0 ? year - 1 : year
@@ -122,18 +197,23 @@ export default function Home() {
     if (currentMonth === 0) { setCurrentMonth(11); setCurrentYear(y => y - 1) }
     else setCurrentMonth(m => m - 1)
   }
-
   const nextMonth = () => {
     if (currentMonth === 11) { setCurrentMonth(0); setCurrentYear(y => y + 1) }
     else setCurrentMonth(m => m + 1)
   }
 
-  if (!isLoaded) {
+  // ── Screens ──────────────────────────────────────────────
+  if (appMode === 'checking') {
     return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
-        <div className="text-green-400 text-3xl animate-pulse">💸</div>
+      <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center gap-3">
+        <div className="text-4xl animate-pulse">💸</div>
+        <div className="text-gray-500 text-sm">Загрузка...</div>
       </div>
     )
+  }
+
+  if (appMode === 'auth') {
+    return <AuthModal onAuthenticated={handleAuthenticated} onSkip={handleSkip} />
   }
 
   const currentOpeningBalance = getOpeningBalance(currentYear, currentMonth)
@@ -142,18 +222,48 @@ export default function Home() {
     <div className="min-h-screen bg-gray-950 text-white flex flex-col">
       {/* Header */}
       <header className="bg-gray-900/95 border-b border-gray-800 backdrop-blur-sm sticky top-0 z-20">
-        <div className="max-w-lg mx-auto px-4 py-3 flex items-center justify-between">
+        <div className="max-w-lg mx-auto px-4 py-2.5 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-xl">💸</span>
             <span className="text-white font-bold text-lg tracking-tight">КЭШ ФЛОУ</span>
+            {syncing && <span className="text-xs text-blue-400 animate-pulse">↑ sync</span>}
           </div>
-          <div className="text-right">
-            <div className="text-gray-400 text-xs">{MONTHS_RU[currentMonth]} {currentYear}</div>
-            <div className={`text-xs font-medium ${currentOpeningBalance >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-              {fmt(currentOpeningBalance)}
+          <div className="flex items-center gap-3">
+            <div className="text-right">
+              <div className="text-gray-400 text-xs">{MONTHS_RU[currentMonth]} {currentYear}</div>
+              <div className={`text-xs font-medium ${currentOpeningBalance >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                {fmt(currentOpeningBalance)}
+              </div>
             </div>
+            {userId ? (
+              <button
+                onClick={handleSignOut}
+                title={`Выйти (${userEmail})`}
+                className="w-8 h-8 rounded-full bg-green-700/30 hover:bg-red-800/40 text-green-400 hover:text-red-400 flex items-center justify-center text-sm transition-colors"
+              >
+                ☁
+              </button>
+            ) : (
+              <button
+                onClick={() => setAppMode('auth')}
+                title="Войти для синхронизации"
+                className="w-8 h-8 rounded-full bg-gray-700 hover:bg-gray-600 text-gray-400 hover:text-white flex items-center justify-center text-sm transition-colors"
+              >
+                ↗
+              </button>
+            )}
           </div>
         </div>
+
+        {/* Cloud banner (no auth) */}
+        {!userId && (
+          <div
+            onClick={() => setAppMode('auth')}
+            className="max-w-lg mx-auto px-4 py-1.5 bg-blue-900/20 border-t border-blue-800/30 text-center cursor-pointer hover:bg-blue-900/30 transition-colors"
+          >
+            <span className="text-blue-400 text-xs">☁ Войдите для синхронизации между устройствами →</span>
+          </div>
+        )}
 
         {/* Tabs */}
         <div className="max-w-lg mx-auto flex border-t border-gray-800">
