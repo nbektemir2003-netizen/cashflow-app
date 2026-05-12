@@ -36,8 +36,8 @@ type Tab = 'fact' | 'plan' | 'report' | 'history'
 type AppMode = 'checking' | 'auth' | 'app'
 
 const TABS: { key: Tab; label: string; icon: string }[] = [
-  { key: 'fact', label: 'Месяц', icon: '📅' },
   { key: 'plan', label: 'План', icon: '📋' },
+  { key: 'fact', label: 'Месяц', icon: '📅' },
   { key: 'report', label: 'Отчёт', icon: '📊' },
   { key: 'history', label: 'История', icon: '📈' },
 ]

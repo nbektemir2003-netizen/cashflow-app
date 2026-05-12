@@ -323,11 +323,17 @@ export default function FactView({
 function SummaryCard({ label, actual, planned, color }: { label: string; actual: number; planned: number; color: 'green' | 'orange' | 'red' }) {
   const colors = { green: 'text-green-400', orange: 'text-orange-400', red: 'text-red-400' }
   const isOver = color !== 'green' && planned > 0 && actual > planned
+  const diff = color === 'green' ? actual - planned : planned - actual
+  const hasPlan = planned > 0
   return (
     <div className="bg-gray-800 rounded-xl p-2.5 text-center border border-gray-700/50">
       <div className="text-gray-400 text-xs mb-1">{label}</div>
       <div className={`font-bold text-xs ${isOver ? 'text-red-400' : colors[color]}`}>{fmt(actual)}</div>
-      <div className="text-gray-600 text-xs mt-0.5 truncate">/{fmt(planned)}</div>
+      {hasPlan && (
+        <div className={`text-xs mt-0.5 font-medium ${isOver ? 'text-red-400' : diff >= 0 ? 'text-gray-400' : 'text-red-400'}`}>
+          {isOver ? `перерасх. ${fmt(Math.abs(diff))}` : diff >= 0 ? `ост. ${fmt(diff)}` : `−${fmt(Math.abs(diff))}`}
+        </div>
+      )}
     </div>
   )
 }
