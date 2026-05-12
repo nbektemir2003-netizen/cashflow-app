@@ -30,8 +30,8 @@ export default function ReportView({ monthlyPlans, transactions, currentYear, cu
   const getPlanned = (categoryId: string) => {
     let total = 0
     for (let m = fromMonth; m <= toMonth; m++) {
-      const plan = monthlyPlans[monthKey(year, m)] || {}
-      total += plan[categoryId] || 0
+      const amounts = monthlyPlans[monthKey(year, m)]?.amounts || {}
+      total += amounts[categoryId] || 0
     }
     return total
   }

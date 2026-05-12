@@ -10,11 +10,21 @@ export async function cloudLoadPlan(userId: string): Promise<MonthlyPlans | null
     .maybeSingle()
   if (error || !data) return null
   const raw = data.plan as any
-  // Detect old flat format (values are numbers) → migrate to monthly
-  if (raw && typeof Object.values(raw)[0] === 'number') {
+  if (!raw) return null
+  // Old flat format: { salary: 350000, ... } → one month
+  if (typeof Object.values(raw)[0] === 'number') {
     const now = new Date()
     const key = `${now.getFullYear()}-${now.getMonth()}`
-    return { [key]: raw as AnnualPlan }
+    return { [key]: { amounts: raw as AnnualPlan, notes: {} } }
+  }
+  // Intermediate format: { "2026-4": { salary: 350000 } }
+  const firstMonth = Object.values(raw)[0] as any
+  if (firstMonth && typeof firstMonth === 'object' && !('amounts' in firstMonth)) {
+    const migrated: MonthlyPlans = {}
+    for (const [k, v] of Object.entries(raw)) {
+      migrated[k] = { amounts: v as AnnualPlan, notes: {} }
+    }
+    return migrated
   }
   return raw as MonthlyPlans
 }

@@ -46,9 +46,9 @@ export default function HistoryView({ monthlyPlans, transactions }: Props) {
       .filter(t => EXPENSE_CATEGORIES.find(c => c.id === t.categoryId))
       .reduce((sum, t) => sum + Math.abs(t.amount), 0)
 
-    const plan = monthlyPlans[monthKey(currentYear, monthIdx)] || {}
-    const plannedIncome = INCOME_CATEGORIES.reduce((s, c) => s + (plan[c.id] || 0), 0)
-    const plannedExpense = EXPENSE_CATEGORIES.reduce((s, c) => s + (plan[c.id] || 0), 0)
+    const amounts = monthlyPlans[monthKey(currentYear, monthIdx)]?.amounts || {}
+    const plannedIncome = INCOME_CATEGORIES.reduce((s, c) => s + (amounts[c.id] || 0), 0)
+    const plannedExpense = EXPENSE_CATEGORIES.reduce((s, c) => s + (amounts[c.id] || 0), 0)
 
     return {
       month: shortName,

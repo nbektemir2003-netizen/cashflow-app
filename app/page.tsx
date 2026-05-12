@@ -144,7 +144,7 @@ export default function Home() {
       saveTransactions(updated)
       if (userId) cloudSaveTransaction(userId, transaction)
 
-      const currentPlan = monthlyPlans[monthKey(currentYear, currentMonth)] || {}
+      const currentPlan = monthlyPlans[monthKey(currentYear, currentMonth)]?.amounts || {}
       const expenseCat = categories.filter(c => c.group !== 'income').find(c => c.id === transaction.categoryId)
       if (expenseCat && transaction.amount > 0) {
         const planned = currentPlan[transaction.categoryId] || 0
@@ -223,7 +223,7 @@ export default function Home() {
   }
 
   const currentOpeningBalance = getOpeningBalance(currentYear, currentMonth)
-  const currentPlan = monthlyPlans[monthKey(currentYear, currentMonth)] || {}
+  const currentPlan = monthlyPlans[monthKey(currentYear, currentMonth)]?.amounts || {}
 
   return (
     <div className="min-h-screen bg-gray-950 text-white flex flex-col">
