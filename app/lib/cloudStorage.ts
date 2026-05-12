@@ -62,6 +62,17 @@ export async function cloudSaveTransaction(userId: string, t: Transaction): Prom
   })
 }
 
+export async function cloudDeleteTransaction(userId: string, txId: string): Promise<void> {
+  await supabase.from('cashflow_transactions').delete().match({ id: txId, user_id: userId })
+}
+
+export async function cloudUpdateTransaction(userId: string, t: Transaction): Promise<void> {
+  await supabase.from('cashflow_transactions').upsert({
+    id: t.id, user_id: userId, category_id: t.categoryId,
+    amount: t.amount, timestamp: t.timestamp, note: t.note || null,
+  })
+}
+
 export async function cloudUploadAllTransactions(userId: string, txs: Transaction[]): Promise<void> {
   if (txs.length === 0) return
   await supabase.from('cashflow_transactions').upsert(

@@ -13,6 +13,7 @@ import {
 import {
   cloudLoadPlan, cloudSavePlan,
   cloudLoadTransactions, cloudSaveTransaction, cloudUploadAllTransactions,
+  cloudDeleteTransaction, cloudUpdateTransaction,
   cloudLoadBalances, cloudSaveBalance,
   cloudLoadCategories, cloudSaveCategories,
 } from './lib/cloudStorage'
@@ -171,6 +172,20 @@ export default function Home() {
     [transactions, monthlyPlans, currentYear, currentMonth, userId, categories],
   )
 
+  const handleDeleteTransaction = useCallback(async (id: string) => {
+    const updated = transactions.filter(t => t.id !== id)
+    setTransactions(updated)
+    saveTransactions(updated)
+    if (userId) cloudDeleteTransaction(userId, id)
+  }, [transactions, userId])
+
+  const handleEditTransaction = useCallback(async (tx: Transaction) => {
+    const updated = transactions.map(t => t.id === tx.id ? tx : t)
+    setTransactions(updated)
+    saveTransactions(updated)
+    if (userId) cloudUpdateTransaction(userId, tx)
+  }, [transactions, userId])
+
   const handleSetOpeningBalance = useCallback(
     async (amount: number) => {
       const key = monthKey(currentYear, currentMonth)
@@ -301,6 +316,8 @@ export default function Home() {
             openingBalance={currentOpeningBalance}
             categories={categories}
             onAddTransaction={handleAddTransaction}
+            onDeleteTransaction={handleDeleteTransaction}
+            onEditTransaction={handleEditTransaction}
             onSetOpeningBalance={handleSetOpeningBalance}
             onPrevMonth={prevMonth}
             onNextMonth={nextMonth}
