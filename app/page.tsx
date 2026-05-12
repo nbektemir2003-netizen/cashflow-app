@@ -290,7 +290,7 @@ export default function Home() {
         <div className="max-w-lg mx-auto px-4 py-2.5 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-xl">💸</span>
-            <span className="text-white font-bold text-lg tracking-tight">КЭШ ФЛОУ</span>
+            <span className="text-white font-bold text-lg tracking-tight">Финик</span>
             {syncing && <span className="text-xs text-blue-400 animate-pulse">↑ синхр.</span>}
           </div>
           <div className="flex items-center gap-3">
