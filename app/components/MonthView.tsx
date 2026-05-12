@@ -68,7 +68,10 @@ export default function FactView({
   const getAccountBalance = (accountId: string) => {
     const acc = accounts.find(a => a.id === accountId)
     if (!acc) return 0
-    const txSum = transactions.filter(t => t.accountId === accountId).reduce((s, t) => s + t.amount, 0)
+    const isDefault = accounts[0]?.id === accountId
+    const txSum = transactions
+      .filter(t => t.accountId === accountId || (isDefault && !t.accountId))
+      .reduce((s, t) => s + t.amount, 0)
     const tIn = transfers.filter(t => t.toAccountId === accountId).reduce((s, t) => s + t.amount, 0)
     const tOut = transfers.filter(t => t.fromAccountId === accountId).reduce((s, t) => s + t.amount, 0)
     return acc.initialBalance + txSum + tIn - tOut
