@@ -388,10 +388,11 @@ export default function Home() {
             transactions={transactions}
             currentYear={currentYear}
             currentMonth={currentMonth}
+            categories={categories}
           />
         )}
         {activeTab === 'history' && (
-          <HistoryView monthlyPlans={monthlyPlans} transactions={transactions} />
+          <HistoryView monthlyPlans={monthlyPlans} transactions={transactions} categories={categories} />
         )}
       </main>
 

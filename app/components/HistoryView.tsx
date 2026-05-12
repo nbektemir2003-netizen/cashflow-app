@@ -1,13 +1,14 @@
 'use client'
 
-import { INCOME_CATEGORIES, EXPENSE_CATEGORIES, MONTHS_RU, MONTHS_RU_SHORT, fmt } from '../lib/data'
-import { Transaction } from '../lib/types'
+import { MONTHS_RU, MONTHS_RU_SHORT, fmt, DEFAULT_CATEGORIES } from '../lib/data'
+import { Transaction, Category } from '../lib/types'
 import { MonthlyPlans, monthKey } from '../lib/storage'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 
 interface Props {
   monthlyPlans: MonthlyPlans
   transactions: Transaction[]
+  categories?: Category[]
 }
 
 const CustomTooltip = ({ active, payload, label }: any) => {
@@ -28,9 +29,12 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 const tickFmt = (v: number) =>
   v >= 1_000_000 ? (v / 1_000_000).toFixed(1) + 'М' : v >= 1_000 ? (v / 1_000).toFixed(0) + 'К' : String(v)
 
-export default function HistoryView({ monthlyPlans, transactions }: Props) {
+export default function HistoryView({ monthlyPlans, transactions, categories = DEFAULT_CATEGORIES }: Props) {
   const now = new Date()
   const currentYear = now.getFullYear()
+
+  const incomeCategories = categories.filter(c => c.group === 'income')
+  const expenseCategories = categories.filter(c => c.group !== 'income')
 
   const monthlyData = MONTHS_RU_SHORT.map((shortName, monthIdx) => {
     const monthTx = transactions.filter(t => {
@@ -39,16 +43,16 @@ export default function HistoryView({ monthlyPlans, transactions }: Props) {
     })
 
     const income = monthTx
-      .filter(t => INCOME_CATEGORIES.find(c => c.id === t.categoryId))
+      .filter(t => incomeCategories.find(c => c.id === t.categoryId))
       .reduce((sum, t) => sum + t.amount, 0)
 
     const expense = monthTx
-      .filter(t => EXPENSE_CATEGORIES.find(c => c.id === t.categoryId))
+      .filter(t => expenseCategories.find(c => c.id === t.categoryId))
       .reduce((sum, t) => sum + Math.abs(t.amount), 0)
 
     const amounts = monthlyPlans[monthKey(currentYear, monthIdx)]?.amounts || {}
-    const plannedIncome = INCOME_CATEGORIES.reduce((s, c) => s + (amounts[c.id] || 0), 0)
-    const plannedExpense = EXPENSE_CATEGORIES.reduce((s, c) => s + (amounts[c.id] || 0), 0)
+    const plannedIncome = incomeCategories.reduce((s, c) => s + (amounts[c.id] || 0), 0)
+    const plannedExpense = expenseCategories.reduce((s, c) => s + (amounts[c.id] || 0), 0)
 
     return {
       month: shortName,

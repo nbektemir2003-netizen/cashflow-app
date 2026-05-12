@@ -1,8 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { CATEGORIES, MONTHS_RU, fmt } from '../lib/data'
-import { AnnualPlan, Transaction } from '../lib/types'
+import { MONTHS_RU, fmt, DEFAULT_CATEGORIES } from '../lib/data'
+import { Transaction, Category } from '../lib/types'
 import { MonthlyPlans, monthKey } from '../lib/storage'
 
 interface Props {
@@ -10,9 +10,10 @@ interface Props {
   transactions: Transaction[]
   currentYear: number
   currentMonth: number
+  categories?: Category[]
 }
 
-export default function ReportView({ monthlyPlans, transactions, currentYear, currentMonth }: Props) {
+export default function ReportView({ monthlyPlans, transactions, currentYear, currentMonth, categories = DEFAULT_CATEGORIES }: Props) {
   const [fromMonth, setFromMonth] = useState(currentMonth)
   const [toMonth, setToMonth] = useState(currentMonth)
   const [year, setYear] = useState(currentYear)
@@ -36,7 +37,7 @@ export default function ReportView({ monthlyPlans, transactions, currentYear, cu
     return total
   }
 
-  const cats = CATEGORIES.map(cat => ({
+  const cats = categories.map(cat => ({
     ...cat,
     planned: getPlanned(cat.id),
     actual: getActual(cat.id),

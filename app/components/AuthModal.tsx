@@ -41,7 +41,11 @@ export default function AuthModal({ onAuthenticated, onSkip }: Props) {
     } else {
       const { data, error: err } = await supabase.auth.signUp({ email, password })
       if (err) {
-        setError(err.message.includes('already') ? 'Этот email уже зарегистрирован' : err.message)
+        const msg = err.message.toLowerCase()
+        if (msg.includes('already')) setError('Этот email уже зарегистрирован')
+        else if (msg.includes('rate')) setError('Слишком много попыток. Попробуйте позже')
+        else if (msg.includes('invalid')) setError('Неверный формат email')
+        else setError('Ошибка регистрации. Попробуйте позже')
       } else if (data.user) {
         onAuthenticated(data.user.id, data.user.email!)
       }
@@ -140,7 +144,7 @@ export default function AuthModal({ onAuthenticated, onSkip }: Props) {
               ? '⏳ Загрузка...'
               : mode === 'login'
               ? '→ Войти'
-              : '✓ Создать аккаунт'}
+              : '✓ Зарегистрироваться'}
           </button>
         </div>
 
