@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { fmt, CURRENCY, MONTHS_RU_SHORT, MONTHS_RU } from '../lib/data'
 import { AnnualPlan, Category, CategoryGroup } from '../lib/types'
 import { MonthlyPlans, MonthPlan, monthKey } from '../lib/storage'
@@ -192,7 +192,7 @@ export default function AnnualPlanView({
         title="💰 ДОХОДЫ" titleColor="text-green-400" lineColor="bg-green-900/40" accentColor="green"
         categories={incomeCategories} amounts={localAmounts} notes={localNotes} group="income"
         expandedNote={expandedNote} onToggleNote={id => setExpandedNote(expandedNote === id ? null : id)}
-        onAmountChange={handleAmountChange} onNoteChange={handleNoteChange}
+        onAmountChange={handleAmountChange} onNoteChange={handleNoteChange} onSave={handleSave}
         onEdit={cat => setEditCatModal({ cat, group: cat.group })}
         onDelete={id => setDeleteConfirm(id)} onAdd={() => setEditCatModal({ group: 'income' })}
       />
@@ -200,7 +200,7 @@ export default function AnnualPlanView({
         title="🔒 ОБЯЗАТЕЛЬНЫЕ" titleColor="text-orange-400" lineColor="bg-orange-900/40" accentColor="orange"
         categories={mandatoryCategories} amounts={localAmounts} notes={localNotes} group="mandatory"
         expandedNote={expandedNote} onToggleNote={id => setExpandedNote(expandedNote === id ? null : id)}
-        onAmountChange={handleAmountChange} onNoteChange={handleNoteChange}
+        onAmountChange={handleAmountChange} onNoteChange={handleNoteChange} onSave={handleSave}
         onEdit={cat => setEditCatModal({ cat, group: cat.group })}
         onDelete={id => setDeleteConfirm(id)} onAdd={() => setEditCatModal({ group: 'mandatory' })}
       />
@@ -208,7 +208,7 @@ export default function AnnualPlanView({
         title="🛒 ТЕКУЩИЕ" titleColor="text-red-400" lineColor="bg-red-900/40" accentColor="red"
         categories={currentCategories} amounts={localAmounts} notes={localNotes} group="current"
         expandedNote={expandedNote} onToggleNote={id => setExpandedNote(expandedNote === id ? null : id)}
-        onAmountChange={handleAmountChange} onNoteChange={handleNoteChange}
+        onAmountChange={handleAmountChange} onNoteChange={handleNoteChange} onSave={handleSave}
         onEdit={cat => setEditCatModal({ cat, group: cat.group })}
         onDelete={id => setDeleteConfirm(id)} onAdd={() => setEditCatModal({ group: 'current' })}
       />
@@ -249,16 +249,16 @@ function PlanSection({
   title, titleColor, lineColor, accentColor,
   categories, amounts, notes, group,
   expandedNote, onToggleNote,
-  onAmountChange, onNoteChange, onEdit, onDelete, onAdd,
+  onAmountChange, onNoteChange, onSave, onEdit, onDelete, onAdd,
 }: {
   title: string; titleColor: string; lineColor: string; accentColor: 'green' | 'orange' | 'red'
   categories: Category[]; amounts: Record<string, number>; notes: Record<string, string>; group: CategoryGroup
   expandedNote: string | null; onToggleNote: (id: string) => void
   onAmountChange: (id: string, v: string) => void
   onNoteChange: (id: string, v: string) => void
+  onSave: () => void
   onEdit: (cat: Category) => void; onDelete: (id: string) => void; onAdd: () => void
 }) {
-  const ringColor = { green: 'focus:ring-green-500', orange: 'focus:ring-orange-500', red: 'focus:ring-red-500' }
   const total = categories.reduce((s, c) => s + (amounts[c.id] || 0), 0)
 
   return (
@@ -274,7 +274,6 @@ function PlanSection({
           const isExpanded = expandedNote === cat.id
           return (
             <div key={cat.id} className="bg-gray-800 rounded-xl overflow-hidden">
-              {/* Main row */}
               <div className="px-3 py-2 flex items-center gap-2">
                 <span className="text-lg flex-shrink-0">{cat.icon}</span>
                 <div className="flex-1 min-w-0">
@@ -283,16 +282,13 @@ function PlanSection({
                     <div className="text-gray-500 text-xs truncate">{notes[cat.id]}</div>
                   )}
                 </div>
-                <input
-                  type="number"
-                  value={amounts[cat.id] || ''}
-                  onChange={e => onAmountChange(cat.id, e.target.value)}
-                  placeholder="0"
-                  min="0"
-                  className={`w-24 bg-gray-700 text-white text-right px-2 py-1.5 rounded-lg focus:outline-none focus:ring-2 text-sm ${ringColor[accentColor]}`}
+                <PlanInput
+                  value={amounts[cat.id] || 0}
+                  accentColor={accentColor}
+                  onChange={v => onAmountChange(cat.id, v)}
+                  onSave={onSave}
                 />
                 <span className="text-gray-600 text-xs w-3">{CURRENCY}</span>
-                {/* Note toggle */}
                 <button
                   onClick={() => onToggleNote(cat.id)}
                   className={`w-7 h-7 rounded-lg flex items-center justify-center text-sm transition-colors flex-shrink-0 ${
@@ -305,7 +301,6 @@ function PlanSection({
                 <button onClick={() => onEdit(cat)} className="w-7 h-7 rounded-lg bg-gray-700 hover:bg-blue-800/50 text-gray-400 hover:text-blue-300 flex items-center justify-center text-sm transition-colors flex-shrink-0" title="Редактировать">✏</button>
                 <button onClick={() => onDelete(cat.id)} className="w-7 h-7 rounded-lg bg-gray-700 hover:bg-red-900/50 text-gray-500 hover:text-red-400 flex items-center justify-center text-sm transition-colors flex-shrink-0" title="Удалить">×</button>
               </div>
-              {/* Note input (expanded) */}
               {isExpanded && (
                 <div className="px-3 pb-2.5">
                   <input
@@ -334,5 +329,60 @@ function PlanSection({
         </button>
       </div>
     </div>
+  )
+}
+
+function PlanInput({ value, accentColor, onChange, onSave }: {
+  value: number
+  accentColor: 'green' | 'orange' | 'red'
+  onChange: (v: string) => void
+  onSave: () => void
+}) {
+  const [focused, setFocused] = useState(false)
+  const [raw, setRaw] = useState('')
+  const ref = useRef<HTMLInputElement>(null)
+
+  const ringColor = { green: 'focus:ring-green-500', orange: 'focus:ring-orange-500', red: 'focus:ring-red-500' }
+
+  const displayValue = focused
+    ? raw
+    : value > 0 ? value.toLocaleString('ru-RU') : ''
+
+  const handleFocus = () => {
+    setFocused(true)
+    setRaw(value > 0 ? String(value) : '')
+  }
+
+  const handleBlur = () => {
+    setFocused(false)
+  }
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const digits = e.target.value.replace(/\D/g, '')
+    setRaw(digits)
+    onChange(digits)
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      ref.current?.blur()
+      onSave()
+    }
+  }
+
+  return (
+    <input
+      ref={ref}
+      type="text"
+      inputMode="numeric"
+      value={displayValue}
+      placeholder="0"
+      onFocus={handleFocus}
+      onBlur={handleBlur}
+      onChange={handleChange}
+      onKeyDown={handleKeyDown}
+      className={`w-24 bg-gray-700 text-white text-right px-2 py-1.5 rounded-lg focus:outline-none focus:ring-2 text-sm ${ringColor[accentColor]}`}
+    />
   )
 }
