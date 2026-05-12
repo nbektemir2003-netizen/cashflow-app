@@ -67,19 +67,18 @@ export default function FactView({
 
   const getAccountBalance = (accountId: string) => {
     const isDefault = accounts[0]?.id === accountId
-    // Use only current-month transactions so account cards match the monthly view
-    const txSum = monthTx
-      .filter(t => t.accountId === accountId || (isDefault && !t.accountId))
-      .reduce((s, t) => s + t.amount, 0)
+    const incomeIds = new Set(incomeCategories.map(c => c.id))
+    const acctTx = monthTx.filter(t => t.accountId === accountId || (isDefault && !t.accountId))
+    const income = acctTx.filter(t => incomeIds.has(t.categoryId)).reduce((s, t) => s + t.amount, 0)
+    const expense = acctTx.filter(t => !incomeIds.has(t.categoryId)).reduce((s, t) => s + t.amount, 0)
     const monthTransfers = transfers.filter(t => {
       const d = new Date(t.timestamp)
       return d.getFullYear() === year && d.getMonth() === month
     })
     const tIn = monthTransfers.filter(t => t.toAccountId === accountId).reduce((s, t) => s + t.amount, 0)
     const tOut = monthTransfers.filter(t => t.fromAccountId === accountId).reduce((s, t) => s + t.amount, 0)
-    // Default account starts from the month's opening balance; others start from 0
     const startBalance = isDefault ? openingBalance : 0
-    return startBalance + txSum + tIn - tOut
+    return startBalance + income - expense + tIn - tOut
   }
 
   const totalIncomeActual = incomeCategories.reduce((s, c) => s + getActual(c.id), 0)
