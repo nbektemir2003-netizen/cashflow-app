@@ -2,13 +2,13 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { MONTHS_RU, fmt, DEFAULT_CATEGORIES } from './lib/data'
-import { AnnualPlan, Transaction, AppNotification, Category } from './lib/types'
+import { Transaction, AppNotification, Category } from './lib/types'
 import {
-  getAnnualPlan, saveAnnualPlan,
   getTransactions, saveTransactions,
   getOpeningBalances, saveOpeningBalances,
   getStoredCategories, saveStoredCategories,
-  monthKey,
+  getMonthlyPlans, saveMonthlyPlans,
+  MonthlyPlans, monthKey,
 } from './lib/storage'
 import {
   cloudLoadPlan, cloudSavePlan,
@@ -28,10 +28,10 @@ type Tab = 'fact' | 'plan' | 'report' | 'history'
 type AppMode = 'checking' | 'auth' | 'app'
 
 const TABS: { key: Tab; label: string; icon: string }[] = [
-  { key: 'fact', label: 'Факт', icon: '💸' },
+  { key: 'fact', label: 'Месяц', icon: '📅' },
   { key: 'plan', label: 'План', icon: '📋' },
   { key: 'report', label: 'Отчёт', icon: '📊' },
-  { key: 'history', label: 'История', icon: '🗂' },
+  { key: 'history', label: 'История', icon: '📈' },
 ]
 
 export default function Home() {
@@ -45,13 +45,12 @@ export default function Home() {
   const [currentMonth, setCurrentMonth] = useState(now.getMonth())
   const [activeTab, setActiveTab] = useState<Tab>('fact')
 
-  const [annualPlan, setAnnualPlan] = useState<AnnualPlan>({})
+  const [monthlyPlans, setMonthlyPlans] = useState<MonthlyPlans>({})
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [openingBalances, setOpeningBalances] = useState<Record<string, number>>({})
   const [categories, setCategories] = useState<Category[]>(DEFAULT_CATEGORIES)
   const [notifications, setNotifications] = useState<AppNotification[]>([])
 
-  // On mount: check existing session
   useEffect(() => {
     const init = async () => {
       const { data: { session } } = await supabase.auth.getSession()
@@ -69,19 +68,19 @@ export default function Home() {
     setUserId(uid)
     setUserEmail(email)
 
-    const localPlan = getAnnualPlan()
+    const localPlans = getMonthlyPlans()
     const localTx = getTransactions()
     const localBalances = getOpeningBalances()
     const localCats = getStoredCategories()
 
-    const [cloudPlan, cloudTx, cloudBalances, cloudCats] = await Promise.all([
+    const [cloudPlans, cloudTx, cloudBalances, cloudCats] = await Promise.all([
       cloudLoadPlan(uid),
       cloudLoadTransactions(uid),
       cloudLoadBalances(uid),
       cloudLoadCategories(uid),
     ])
 
-    const finalPlan = cloudPlan ?? localPlan
+    const finalPlans = cloudPlans ?? localPlans
     const finalTx = (cloudTx !== null && cloudTx.length > 0)
       ? cloudTx
       : localTx.length > 0
@@ -90,15 +89,15 @@ export default function Home() {
     const finalBalances = cloudBalances ?? localBalances
     const finalCats = cloudCats ?? localCats
 
-    if (!cloudPlan && Object.keys(localPlan).length > 0) await cloudSavePlan(uid, localPlan)
+    if (!cloudPlans && Object.keys(localPlans).length > 0) await cloudSavePlan(uid, localPlans)
     if (!cloudCats) await cloudSaveCategories(uid, finalCats)
 
-    setAnnualPlan(finalPlan)
+    setMonthlyPlans(finalPlans)
     setTransactions(finalTx)
     setOpeningBalances(finalBalances)
     setCategories(finalCats)
 
-    saveAnnualPlan(finalPlan)
+    saveMonthlyPlans(finalPlans)
     saveTransactions(finalTx)
     saveOpeningBalances(finalBalances)
     saveStoredCategories(finalCats)
@@ -112,7 +111,7 @@ export default function Home() {
   }, [])
 
   const handleSkip = useCallback(() => {
-    setAnnualPlan(getAnnualPlan())
+    setMonthlyPlans(getMonthlyPlans())
     setTransactions(getTransactions())
     setOpeningBalances(getOpeningBalances())
     setCategories(getStoredCategories())
@@ -126,10 +125,10 @@ export default function Home() {
     setAppMode('auth')
   }
 
-  const handlePlanChange = useCallback(async (plan: AnnualPlan) => {
-    setAnnualPlan(plan)
-    saveAnnualPlan(plan)
-    if (userId) cloudSavePlan(userId, plan)
+  const handlePlansChange = useCallback(async (plans: MonthlyPlans) => {
+    setMonthlyPlans(plans)
+    saveMonthlyPlans(plans)
+    if (userId) cloudSavePlan(userId, plans)
   }, [userId])
 
   const handleCategoriesChange = useCallback(async (cats: Category[]) => {
@@ -145,9 +144,10 @@ export default function Home() {
       saveTransactions(updated)
       if (userId) cloudSaveTransaction(userId, transaction)
 
+      const currentPlan = monthlyPlans[monthKey(currentYear, currentMonth)] || {}
       const expenseCat = categories.filter(c => c.group !== 'income').find(c => c.id === transaction.categoryId)
       if (expenseCat && transaction.amount > 0) {
-        const planned = annualPlan[transaction.categoryId] || 0
+        const planned = currentPlan[transaction.categoryId] || 0
         if (planned > 0) {
           const actual = updated
             .filter(t => {
@@ -168,7 +168,7 @@ export default function Home() {
         }
       }
     },
-    [transactions, annualPlan, currentYear, currentMonth, userId, categories],
+    [transactions, monthlyPlans, currentYear, currentMonth, userId, categories],
   )
 
   const handleSetOpeningBalance = useCallback(
@@ -209,7 +209,6 @@ export default function Home() {
     else setCurrentMonth(m => m + 1)
   }
 
-  // ── Screens ──────────────────────────────────────────────
   if (appMode === 'checking') {
     return (
       <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center gap-3">
@@ -224,6 +223,7 @@ export default function Home() {
   }
 
   const currentOpeningBalance = getOpeningBalance(currentYear, currentMonth)
+  const currentPlan = monthlyPlans[monthKey(currentYear, currentMonth)] || {}
 
   return (
     <div className="min-h-screen bg-gray-950 text-white flex flex-col">
@@ -262,7 +262,6 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Cloud banner (no auth) */}
         {!userId && (
           <div
             onClick={() => setAppMode('auth')}
@@ -297,7 +296,7 @@ export default function Home() {
           <FactView
             year={currentYear}
             month={currentMonth}
-            annualPlan={annualPlan}
+            annualPlan={currentPlan}
             transactions={transactions}
             openingBalance={currentOpeningBalance}
             categories={categories}
@@ -309,25 +308,25 @@ export default function Home() {
         )}
         {activeTab === 'plan' && (
           <AnnualPlanView
-            annualPlan={annualPlan}
+            monthlyPlans={monthlyPlans}
             transactions={transactions}
             currentYear={currentYear}
             currentMonth={currentMonth}
             categories={categories}
-            onChange={handlePlanChange}
+            onChange={handlePlansChange}
             onCategoriesChange={handleCategoriesChange}
           />
         )}
         {activeTab === 'report' && (
           <ReportView
-            annualPlan={annualPlan}
+            monthlyPlans={monthlyPlans}
             transactions={transactions}
             currentYear={currentYear}
             currentMonth={currentMonth}
           />
         )}
         {activeTab === 'history' && (
-          <HistoryView annualPlan={annualPlan} transactions={transactions} />
+          <HistoryView monthlyPlans={monthlyPlans} transactions={transactions} />
         )}
       </main>
 

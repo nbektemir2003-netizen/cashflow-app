@@ -1,24 +1,18 @@
 'use client'
 
 import { useState } from 'react'
-import {
-  CATEGORIES,
-  INCOME_CATEGORIES,
-  MANDATORY_CATEGORIES,
-  CURRENT_CATEGORIES,
-  MONTHS_RU,
-  fmt,
-} from '../lib/data'
+import { CATEGORIES, MONTHS_RU, fmt } from '../lib/data'
 import { AnnualPlan, Transaction } from '../lib/types'
+import { MonthlyPlans, monthKey } from '../lib/storage'
 
 interface Props {
-  annualPlan: AnnualPlan
+  monthlyPlans: MonthlyPlans
   transactions: Transaction[]
   currentYear: number
   currentMonth: number
 }
 
-export default function ReportView({ annualPlan, transactions, currentYear, currentMonth }: Props) {
+export default function ReportView({ monthlyPlans, transactions, currentYear, currentMonth }: Props) {
   const [fromMonth, setFromMonth] = useState(0)
   const [toMonth, setToMonth] = useState(currentMonth)
   const [year, setYear] = useState(currentYear)
@@ -29,18 +23,22 @@ export default function ReportView({ annualPlan, transactions, currentYear, curr
     transactions
       .filter(t => {
         const d = new Date(t.timestamp)
-        return (
-          d.getFullYear() === year &&
-          d.getMonth() >= fromMonth &&
-          d.getMonth() <= toMonth &&
-          t.categoryId === categoryId
-        )
+        return d.getFullYear() === year && d.getMonth() >= fromMonth && d.getMonth() <= toMonth && t.categoryId === categoryId
       })
       .reduce((sum, t) => sum + t.amount, 0)
 
+  const getPlanned = (categoryId: string) => {
+    let total = 0
+    for (let m = fromMonth; m <= toMonth; m++) {
+      const plan = monthlyPlans[monthKey(year, m)] || {}
+      total += plan[categoryId] || 0
+    }
+    return total
+  }
+
   const cats = CATEGORIES.map(cat => ({
     ...cat,
-    planned: (annualPlan[cat.id] || 0) * monthCount,
+    planned: getPlanned(cat.id),
     actual: getActual(cat.id),
   })).map(cat => ({
     ...cat,
@@ -96,13 +94,8 @@ export default function ReportView({ annualPlan, transactions, currentYear, curr
           </div>
           <div className="flex gap-1.5">
             {[currentYear - 1, currentYear].map(y => (
-              <button
-                key={y}
-                onClick={() => setYear(y)}
-                className={`px-2.5 py-1 rounded-lg text-xs transition-colors ${
-                  year === y ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
-                }`}
-              >
+              <button key={y} onClick={() => setYear(y)}
+                className={`px-2.5 py-1 rounded-lg text-xs transition-colors ${year === y ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-400 hover:bg-gray-600'}`}>
                 {y}
               </button>
             ))}
@@ -127,19 +120,15 @@ export default function ReportView({ annualPlan, transactions, currentYear, curr
             {savings >= 0 ? 'Сэкономлено' : 'Перерасход'}
           </div>
           <div className="text-white font-bold text-xs">{fmt(Math.abs(savings))}</div>
-          <div className="text-gray-600 text-xs mt-0.5">факт</div>
         </div>
       </div>
 
-      {/* Breakdown */}
       <ReportSection title="💰 ДОХОДЫ" titleColor="text-green-400" cats={income} />
       <ReportSection title="🔒 ОБЯЗАТЕЛЬНЫЕ" titleColor="text-orange-400" cats={mandatory} />
       <ReportSection title="🛒 ТЕКУЩИЕ" titleColor="text-red-400" cats={current} />
     </div>
   )
 }
-
-type ReportCat = ReturnType<typeof CATEGORIES['map']>[0] & { planned: number; actual: number; diff: number; group: string }
 
 function ReportSection({ title, titleColor, cats }: { title: string; titleColor: string; cats: any[] }) {
   const visible = cats.filter(c => c.planned > 0 || c.actual !== 0)
@@ -171,10 +160,7 @@ function ReportSection({ title, titleColor, cats }: { title: string; titleColor:
                   </div>
                   {cat.planned > 0 && (
                     <div className="mt-2 w-full bg-gray-700 rounded-full h-1">
-                      <div
-                        className={`h-1 rounded-full ${cat.group === 'income' ? 'bg-green-500' : pct >= 100 ? 'bg-red-500' : 'bg-blue-500'}`}
-                        style={{ width: `${pct}%` }}
-                      />
+                      <div className={`h-1 rounded-full ${cat.group === 'income' ? 'bg-green-500' : pct >= 100 ? 'bg-red-500' : 'bg-blue-500'}`} style={{ width: `${pct}%` }} />
                     </div>
                   )}
                 </div>

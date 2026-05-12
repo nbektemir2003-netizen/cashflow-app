@@ -1,11 +1,12 @@
 'use client'
 
-import { CATEGORIES, INCOME_CATEGORIES, EXPENSE_CATEGORIES, MONTHS_RU, MONTHS_RU_SHORT, fmt } from '../lib/data'
-import { AnnualPlan, Transaction } from '../lib/types'
+import { INCOME_CATEGORIES, EXPENSE_CATEGORIES, MONTHS_RU, MONTHS_RU_SHORT, fmt } from '../lib/data'
+import { Transaction } from '../lib/types'
+import { MonthlyPlans, monthKey } from '../lib/storage'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 
 interface Props {
-  annualPlan: AnnualPlan
+  monthlyPlans: MonthlyPlans
   transactions: Transaction[]
 }
 
@@ -27,7 +28,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 const tickFmt = (v: number) =>
   v >= 1_000_000 ? (v / 1_000_000).toFixed(1) + 'М' : v >= 1_000 ? (v / 1_000).toFixed(0) + 'К' : String(v)
 
-export default function HistoryView({ annualPlan, transactions }: Props) {
+export default function HistoryView({ monthlyPlans, transactions }: Props) {
   const now = new Date()
   const currentYear = now.getFullYear()
 
@@ -45,11 +46,17 @@ export default function HistoryView({ annualPlan, transactions }: Props) {
       .filter(t => EXPENSE_CATEGORIES.find(c => c.id === t.categoryId))
       .reduce((sum, t) => sum + Math.abs(t.amount), 0)
 
+    const plan = monthlyPlans[monthKey(currentYear, monthIdx)] || {}
+    const plannedIncome = INCOME_CATEGORIES.reduce((s, c) => s + (plan[c.id] || 0), 0)
+    const plannedExpense = EXPENSE_CATEGORIES.reduce((s, c) => s + (plan[c.id] || 0), 0)
+
     return {
       month: shortName,
       fullMonth: MONTHS_RU[monthIdx],
       'Доходы': income,
       'Расходы': expense,
+      plannedIncome,
+      plannedExpense,
       savings: income - expense,
       hasTx: monthTx.length > 0,
     }
@@ -88,7 +95,7 @@ export default function HistoryView({ annualPlan, transactions }: Props) {
 
       {/* Chart */}
       <div className="bg-gray-800 rounded-xl p-4 mb-5">
-        <div className="text-gray-400 text-xs mb-3">План vs Факт</div>
+        <div className="text-gray-400 text-xs mb-3">Доходы и расходы по месяцам</div>
         {!hasAnyData ? (
           <div className="h-48 flex flex-col items-center justify-center gap-2 text-gray-600">
             <div className="text-3xl">📊</div>
@@ -117,10 +124,7 @@ export default function HistoryView({ annualPlan, transactions }: Props) {
           <div className="text-gray-500 text-xs font-medium text-right">Итог</div>
         </div>
         {visibleData.map((m, i) => (
-          <div
-            key={i}
-            className={`grid grid-cols-4 px-4 py-3 border-b border-gray-700/40 last:border-0 ${!m.hasTx ? 'opacity-35' : ''}`}
-          >
+          <div key={i} className={`grid grid-cols-4 px-4 py-3 border-b border-gray-700/40 last:border-0 ${!m.hasTx ? 'opacity-35' : ''}`}>
             <div className="text-white text-sm">{m.fullMonth}</div>
             <div className="text-green-400 text-sm text-right">{m['Доходы'] > 0 ? fmt(m['Доходы']) : '—'}</div>
             <div className="text-red-400 text-sm text-right">{m['Расходы'] > 0 ? fmt(m['Расходы']) : '—'}</div>

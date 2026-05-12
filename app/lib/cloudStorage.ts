@@ -1,20 +1,28 @@
 import { supabase } from './supabase'
 import { AnnualPlan, Transaction, Category } from './types'
+import { MonthlyPlans } from './storage'
 
-export async function cloudLoadPlan(userId: string): Promise<AnnualPlan | null> {
+export async function cloudLoadPlan(userId: string): Promise<MonthlyPlans | null> {
   const { data, error } = await supabase
     .from('cashflow_plans')
     .select('plan')
     .eq('user_id', userId)
     .maybeSingle()
   if (error || !data) return null
-  return data.plan as AnnualPlan
+  const raw = data.plan as any
+  // Detect old flat format (values are numbers) → migrate to monthly
+  if (raw && typeof Object.values(raw)[0] === 'number') {
+    const now = new Date()
+    const key = `${now.getFullYear()}-${now.getMonth()}`
+    return { [key]: raw as AnnualPlan }
+  }
+  return raw as MonthlyPlans
 }
 
-export async function cloudSavePlan(userId: string, plan: AnnualPlan): Promise<void> {
+export async function cloudSavePlan(userId: string, plans: MonthlyPlans): Promise<void> {
   await supabase
     .from('cashflow_plans')
-    .upsert({ user_id: userId, plan, updated_at: new Date().toISOString() })
+    .upsert({ user_id: userId, plan: plans, updated_at: new Date().toISOString() })
 }
 
 export async function cloudLoadTransactions(userId: string): Promise<Transaction[] | null> {
