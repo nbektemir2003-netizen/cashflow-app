@@ -142,8 +142,10 @@ function ReportSection({ title, titleColor, cats }: { title: string; titleColor:
       </div>
       <div className="space-y-2">
         {visible.map(cat => {
-          const pct = cat.planned > 0 ? Math.min((cat.actual / cat.planned) * 100, 100) : 0
+          const pct = cat.planned > 0 ? Math.min((cat.actual / cat.planned) * 100, 100) : cat.actual > 0 ? 100 : 0
           const isPositive = cat.diff >= 0
+          const showBar = cat.group === 'income' ? cat.actual > 0 || cat.planned > 0 : cat.planned > 0
+          const barBg = cat.group === 'income' ? 'bg-green-500' : pct >= 100 ? 'bg-red-500' : cat.group === 'mandatory' ? 'bg-orange-500' : 'bg-red-500'
           return (
             <div key={cat.id} className="bg-gray-800 rounded-xl p-3">
               <div className="flex items-center gap-3">
@@ -159,9 +161,9 @@ function ReportSection({ title, titleColor, cats }: { title: string; titleColor:
                     <span>факт: <span className="text-gray-300">{fmt(cat.actual)}</span></span>
                     {cat.planned > 0 && <span>план: {fmt(cat.planned)}</span>}
                   </div>
-                  {cat.planned > 0 && (
+                  {showBar && (
                     <div className="mt-2 w-full bg-gray-700 rounded-full h-1">
-                      <div className={`h-1 rounded-full ${cat.group === 'income' ? 'bg-green-500' : pct >= 100 ? 'bg-red-500' : 'bg-blue-500'}`} style={{ width: `${pct}%` }} />
+                      <div className={`h-1 rounded-full ${barBg}`} style={{ width: `${pct}%` }} />
                     </div>
                   )}
                 </div>
