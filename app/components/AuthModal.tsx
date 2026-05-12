@@ -86,7 +86,7 @@ export default function AuthModal({ onAuthenticated, onSkip }: Props) {
               type="email"
               value={email}
               onChange={e => setEmail(e.target.value)}
-              placeholder="Email"
+              placeholder="Эл. почта"
               autoComplete="email"
               className="w-full bg-gray-700 text-white p-3.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 placeholder-gray-500 text-sm"
               onKeyDown={e => e.key === 'Enter' && handleSubmit()}
