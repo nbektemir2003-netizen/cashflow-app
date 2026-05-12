@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import { AnnualPlan, Transaction, Category } from './types'
+import { AnnualPlan, Transaction, Category, Account, Transfer, RecurringPayment } from './types'
 import { MonthlyPlans } from './storage'
 
 export async function cloudLoadPlan(userId: string): Promise<MonthlyPlans | null> {
@@ -113,7 +113,36 @@ export async function cloudLoadCategories(userId: string): Promise<Category[] | 
 }
 
 export async function cloudSaveCategories(userId: string, categories: Category[]): Promise<void> {
-  await supabase
-    .from('cashflow_categories')
-    .upsert({ user_id: userId, categories })
+  await supabase.from('cashflow_categories').upsert({ user_id: userId, categories })
+}
+
+export async function cloudLoadAccounts(userId: string): Promise<Account[] | null> {
+  const { data, error } = await supabase.from('cashflow_accounts').select('accounts').eq('user_id', userId).maybeSingle()
+  if (error || !data) return null
+  return data.accounts as Account[]
+}
+export async function cloudSaveAccounts(userId: string, accounts: Account[]): Promise<void> {
+  await supabase.from('cashflow_accounts').upsert({ user_id: userId, accounts })
+}
+
+export async function cloudLoadTransfers(userId: string): Promise<Transfer[] | null> {
+  const { data, error } = await supabase.from('cashflow_transfers')
+    .select('id, from_account_id, to_account_id, amount, timestamp, note').eq('user_id', userId)
+  if (error) return null
+  return (data || []).map(r => ({ id: r.id, fromAccountId: r.from_account_id, toAccountId: r.to_account_id, amount: r.amount, timestamp: r.timestamp, note: r.note ?? undefined }))
+}
+export async function cloudSaveTransfer(userId: string, t: Transfer): Promise<void> {
+  await supabase.from('cashflow_transfers').upsert({ id: t.id, user_id: userId, from_account_id: t.fromAccountId, to_account_id: t.toAccountId, amount: t.amount, timestamp: t.timestamp, note: t.note || null })
+}
+export async function cloudDeleteTransfer(userId: string, id: string): Promise<void> {
+  await supabase.from('cashflow_transfers').delete().match({ id, user_id: userId })
+}
+
+export async function cloudLoadRecurring(userId: string): Promise<RecurringPayment[] | null> {
+  const { data, error } = await supabase.from('cashflow_recurring').select('payments').eq('user_id', userId).maybeSingle()
+  if (error || !data) return null
+  return data.payments as RecurringPayment[]
+}
+export async function cloudSaveRecurring(userId: string, payments: RecurringPayment[]): Promise<void> {
+  await supabase.from('cashflow_recurring').upsert({ user_id: userId, payments })
 }

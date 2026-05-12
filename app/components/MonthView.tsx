@@ -2,9 +2,11 @@
 
 import { useState } from 'react'
 import { MONTHS_RU, fmt } from '../lib/data'
-import { AnnualPlan, Transaction, Category } from '../lib/types'
+import { AnnualPlan, Transaction, Category, Account, Transfer, RecurringPayment } from '../lib/types'
 import AmountModal from './AmountModal'
 import EditTransactionModal from './EditTransactionModal'
+import TransferModal from './TransferModal'
+import RecurringPanel from './RecurringPanel'
 
 interface Props {
   year: number
@@ -13,10 +15,15 @@ interface Props {
   transactions: Transaction[]
   openingBalance: number
   categories: Category[]
+  accounts: Account[]
+  transfers: Transfer[]
+  recurring: RecurringPayment[]
   onAddTransaction: (t: Transaction) => void
   onDeleteTransaction: (id: string) => void
   onEditTransaction: (t: Transaction) => void
   onSetOpeningBalance: (amount: number) => void
+  onAddTransfer: (t: Transfer) => void
+  onSaveRecurring: (r: RecurringPayment[]) => void
   onPrevMonth: () => void
   onNextMonth: () => void
 }
@@ -30,14 +37,18 @@ interface AddModalState {
 
 export default function FactView({
   year, month, annualPlan, transactions, openingBalance, categories,
+  accounts, transfers, recurring,
   onAddTransaction, onDeleteTransaction, onEditTransaction,
-  onSetOpeningBalance, onPrevMonth, onNextMonth,
+  onSetOpeningBalance, onAddTransfer, onSaveRecurring,
+  onPrevMonth, onNextMonth,
 }: Props) {
   const [addModal, setAddModal] = useState<AddModalState | null>(null)
   const [editModal, setEditModal] = useState<Transaction | null>(null)
-  const [txList, setTxList] = useState<string | null>(null) // categoryId whose tx list is open
+  const [txList, setTxList] = useState<string | null>(null)
   const [editingBalance, setEditingBalance] = useState(false)
   const [balanceInput, setBalanceInput] = useState('')
+  const [showTransfer, setShowTransfer] = useState(false)
+  const [showRecurring, setShowRecurring] = useState(false)
 
   const incomeCategories = categories.filter(c => c.group === 'income')
   const mandatoryCategories = categories.filter(c => c.group === 'mandatory')
@@ -54,6 +65,15 @@ export default function FactView({
   const getCategoryTx = (categoryId: string) =>
     monthTx.filter(t => t.categoryId === categoryId).sort((a, b) => b.timestamp - a.timestamp)
 
+  const getAccountBalance = (accountId: string) => {
+    const acc = accounts.find(a => a.id === accountId)
+    if (!acc) return 0
+    const txSum = transactions.filter(t => t.accountId === accountId).reduce((s, t) => s + t.amount, 0)
+    const tIn = transfers.filter(t => t.toAccountId === accountId).reduce((s, t) => s + t.amount, 0)
+    const tOut = transfers.filter(t => t.fromAccountId === accountId).reduce((s, t) => s + t.amount, 0)
+    return acc.initialBalance + txSum + tIn - tOut
+  }
+
   const totalIncomeActual = incomeCategories.reduce((s, c) => s + getActual(c.id), 0)
   const totalMandatoryActual = mandatoryCategories.reduce((s, c) => s + getActual(c.id), 0)
   const totalCurrentActual = currentCategories.reduce((s, c) => s + getActual(c.id), 0)
@@ -69,10 +89,18 @@ export default function FactView({
   const now = new Date()
   const isCurrentMonth = year === now.getFullYear() && month === now.getMonth()
 
+  // Recurring payments pending this month (not yet added)
+  const pendingRecurring = recurring.filter(r => {
+    if (!r.active) return false
+    const cat = categories.find(c => c.id === r.categoryId)
+    if (!cat) return false
+    return !monthTx.some(t => t.categoryId === r.categoryId && t.accountId === r.accountId)
+  })
+
   const openAddModal = (cat: Category, type: 'add' | 'subtract') =>
     setAddModal({ categoryId: cat.id, categoryName: cat.name, categoryIcon: cat.icon, type })
 
-  const handleAddConfirm = (amount: number, note?: string) => {
+  const handleAddConfirm = (amount: number, note?: string, accountId?: string) => {
     if (!addModal) return
     onAddTransaction({
       id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
@@ -80,8 +108,20 @@ export default function FactView({
       amount: addModal.type === 'subtract' ? -amount : amount,
       timestamp: Date.now(),
       note,
+      accountId: accountId || undefined,
     })
     setAddModal(null)
+  }
+
+  const handleAddRecurring = (r: RecurringPayment) => {
+    onAddTransaction({
+      id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      categoryId: r.categoryId,
+      amount: -r.amount,
+      timestamp: Date.now(),
+      note: r.note,
+      accountId: r.accountId || undefined,
+    })
   }
 
   const saveBalance = () => {
@@ -89,9 +129,6 @@ export default function FactView({
     if (!isNaN(n)) onSetOpeningBalance(n)
     setEditingBalance(false)
   }
-
-  const txListCat = txList ? categories.find(c => c.id === txList) : null
-  const txListItems = txList ? getCategoryTx(txList) : []
 
   return (
     <div>
@@ -107,6 +144,70 @@ export default function FactView({
         </div>
         <button onClick={onNextMonth} className="w-10 h-10 rounded-full bg-gray-800 hover:bg-gray-700 flex items-center justify-center text-white text-lg transition-colors">→</button>
       </div>
+
+      {/* Accounts */}
+      {accounts.length > 0 && (
+        <div className="mb-4">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-gray-500 text-xs font-semibold uppercase tracking-wide">Счета</span>
+            <button onClick={() => setShowTransfer(true)}
+              className="text-xs text-blue-400 hover:text-blue-300 bg-blue-900/20 hover:bg-blue-900/40 px-2.5 py-1 rounded-lg transition-colors border border-blue-800/30">
+              ↔ Перевод
+            </button>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            {accounts.map(acc => {
+              const bal = getAccountBalance(acc.id)
+              return (
+                <div key={acc.id} className="bg-gray-800 rounded-xl p-2.5 text-center border border-gray-700/50">
+                  <div className="text-xl mb-1">{acc.icon}</div>
+                  <div className="text-gray-400 text-xs">{acc.name}</div>
+                  <div className={`font-bold text-xs mt-0.5 ${bal >= 0 ? 'text-white' : 'text-red-400'}`}>{fmt(bal)}</div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Pending recurring payments */}
+      {pendingRecurring.length > 0 && (
+        <div className="mb-4 bg-yellow-900/20 border border-yellow-800/30 rounded-xl p-3">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-yellow-400 text-xs font-bold">🔄 Повторяющиеся</span>
+            <button onClick={() => setShowRecurring(true)} className="text-gray-500 hover:text-gray-300 text-xs px-2 py-0.5 rounded-lg hover:bg-gray-700 transition-colors">⚙ Настроить</button>
+          </div>
+          <div className="space-y-1.5">
+            {pendingRecurring.map(r => {
+              const cat = categories.find(c => c.id === r.categoryId)
+              const acc = accounts.find(a => a.id === r.accountId)
+              if (!cat) return null
+              return (
+                <div key={r.id} className="flex items-center gap-2">
+                  <span className="text-base">{cat.icon}</span>
+                  <div className="flex-1 min-w-0">
+                    <span className="text-white text-sm">{cat.name}</span>
+                    {acc && <span className="text-gray-500 text-xs ml-1">· {acc.icon} {acc.name}</span>}
+                  </div>
+                  <span className="text-gray-400 text-xs">{fmt(r.amount)}</span>
+                  <button onClick={() => handleAddRecurring(r)}
+                    className="text-xs bg-yellow-700/50 hover:bg-yellow-600/60 text-yellow-200 px-2.5 py-1 rounded-lg transition-colors whitespace-nowrap">
+                    + Добавить
+                  </button>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {recurring.length > 0 && pendingRecurring.length === 0 && (
+        <div className="mb-4 flex justify-end">
+          <button onClick={() => setShowRecurring(true)} className="text-gray-600 hover:text-gray-400 text-xs flex items-center gap-1 transition-colors">
+            🔄 Повторяющиеся платежи
+          </button>
+        </div>
+      )}
 
       {/* Balance row */}
       <div className="grid grid-cols-2 gap-3 mb-4">
@@ -161,9 +262,24 @@ export default function FactView({
         onEditTx={tx => setEditModal(tx)} onDeleteTx={onDeleteTransaction}
       />
 
+      {/* Recurring manage link (if no pending) */}
+      {recurring.length === 0 && (
+        <div className="text-center mt-2 mb-4">
+          <button onClick={() => setShowRecurring(true)} className="text-gray-600 hover:text-gray-400 text-xs transition-colors">
+            + Настроить повторяющиеся платежи
+          </button>
+        </div>
+      )}
+
       {addModal && (
-        <AmountModal categoryName={addModal.categoryName} categoryIcon={addModal.categoryIcon}
-          type={addModal.type} onConfirm={handleAddConfirm} onClose={() => setAddModal(null)} />
+        <AmountModal
+          categoryName={addModal.categoryName}
+          categoryIcon={addModal.categoryIcon}
+          type={addModal.type}
+          accounts={accounts}
+          onConfirm={handleAddConfirm}
+          onClose={() => setAddModal(null)}
+        />
       )}
 
       {editModal && (
@@ -173,6 +289,24 @@ export default function FactView({
           onSave={tx => { onEditTransaction(tx); setEditModal(null) }}
           onDelete={id => { onDeleteTransaction(id); setEditModal(null) }}
           onClose={() => setEditModal(null)}
+        />
+      )}
+
+      {showTransfer && (
+        <TransferModal
+          accounts={accounts}
+          onSave={t => { onAddTransfer(t); setShowTransfer(false) }}
+          onClose={() => setShowTransfer(false)}
+        />
+      )}
+
+      {showRecurring && (
+        <RecurringPanel
+          recurring={recurring}
+          accounts={accounts}
+          categories={categories}
+          onSave={r => { onSaveRecurring(r); setShowRecurring(false) }}
+          onClose={() => setShowRecurring(false)}
         />
       )}
     </div>
@@ -219,7 +353,6 @@ function CategorySection({
           const isOpen = txListOpen === cat.id
           return (
             <div key={cat.id} className={`bg-gray-800 rounded-xl overflow-hidden ${isOver ? 'ring-1 ring-red-500/30' : ''}`}>
-              {/* Main row */}
               <div className="p-3">
                 <div className="flex items-center gap-3">
                   <span className="text-xl flex-shrink-0">{cat.icon}</span>
@@ -252,7 +385,6 @@ function CategorySection({
                 </div>
               </div>
 
-              {/* Transaction list (expanded) */}
               {isOpen && txs.length > 0 && (
                 <div className="border-t border-gray-700/60">
                   {txs.map((tx, i) => {
@@ -269,16 +401,10 @@ function CategorySection({
                           </div>
                           <div className="text-gray-600 text-xs">{timeStr}</div>
                         </div>
-                        <button
-                          onClick={() => onEditTx(tx)}
-                          className="w-7 h-7 rounded-lg bg-gray-700 hover:bg-blue-800/50 text-gray-500 hover:text-blue-300 flex items-center justify-center text-sm transition-colors"
-                          title="Редактировать"
-                        >✏</button>
-                        <button
-                          onClick={() => onDeleteTx(tx.id)}
-                          className="w-7 h-7 rounded-lg bg-gray-700 hover:bg-red-900/50 text-gray-600 hover:text-red-400 flex items-center justify-center text-sm transition-colors"
-                          title="Удалить"
-                        >×</button>
+                        <button onClick={() => onEditTx(tx)}
+                          className="w-7 h-7 rounded-lg bg-gray-700 hover:bg-blue-800/50 text-gray-500 hover:text-blue-300 flex items-center justify-center text-sm transition-colors">✏</button>
+                        <button onClick={() => onDeleteTx(tx.id)}
+                          className="w-7 h-7 rounded-lg bg-gray-700 hover:bg-red-900/50 text-gray-600 hover:text-red-400 flex items-center justify-center text-sm transition-colors">×</button>
                       </div>
                     )
                   })}

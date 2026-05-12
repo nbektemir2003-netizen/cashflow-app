@@ -1,5 +1,5 @@
 -- Run this in Supabase SQL Editor (supabase.com → your project → SQL Editor)
--- If upgrading existing project, only run the cashflow_categories block at the bottom.
+-- If upgrading existing project, only run the blocks marked "if upgrading"
 
 create table cashflow_plans (
   user_id uuid references auth.users(id) on delete cascade primary key,
@@ -33,7 +33,7 @@ create policy "own data only" on cashflow_plans for all using (auth.uid() = user
 create policy "own data only" on cashflow_transactions for all using (auth.uid() = user_id);
 create policy "own data only" on cashflow_balances for all using (auth.uid() = user_id);
 
--- Custom categories (add this if upgrading an existing project)
+-- Custom categories (if upgrading: run from here)
 create table if not exists cashflow_categories (
   user_id uuid references auth.users(id) on delete cascade primary key,
   categories jsonb not null default '[]'
@@ -41,3 +41,36 @@ create table if not exists cashflow_categories (
 
 alter table cashflow_categories enable row level security;
 create policy "own data only" on cashflow_categories for all using (auth.uid() = user_id);
+
+-- Accounts (if upgrading: run from here)
+create table if not exists cashflow_accounts (
+  user_id uuid references auth.users(id) on delete cascade primary key,
+  accounts jsonb not null default '[]'
+);
+
+alter table cashflow_accounts enable row level security;
+create policy "own data only" on cashflow_accounts for all using (auth.uid() = user_id);
+
+-- Transfers between accounts (if upgrading: run from here)
+create table if not exists cashflow_transfers (
+  id text not null,
+  user_id uuid references auth.users(id) on delete cascade,
+  from_account_id text not null,
+  to_account_id text not null,
+  amount numeric not null,
+  timestamp bigint not null,
+  note text,
+  primary key (user_id, id)
+);
+
+alter table cashflow_transfers enable row level security;
+create policy "own data only" on cashflow_transfers for all using (auth.uid() = user_id);
+
+-- Recurring payments (if upgrading: run from here)
+create table if not exists cashflow_recurring (
+  user_id uuid references auth.users(id) on delete cascade primary key,
+  payments jsonb not null default '[]'
+);
+
+alter table cashflow_recurring enable row level security;
+create policy "own data only" on cashflow_recurring for all using (auth.uid() = user_id);

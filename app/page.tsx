@@ -2,12 +2,16 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { MONTHS_RU, fmt, DEFAULT_CATEGORIES } from './lib/data'
-import { Transaction, AppNotification, Category } from './lib/types'
+import { Transaction, AppNotification, Category, Account, Transfer, RecurringPayment } from './lib/types'
 import {
   getTransactions, saveTransactions,
   getOpeningBalances, saveOpeningBalances,
   getStoredCategories, saveStoredCategories,
   getMonthlyPlans, saveMonthlyPlans,
+  getAccounts, saveAccounts,
+  getTransfers, saveTransfers,
+  getRecurring, saveRecurring,
+  DEFAULT_ACCOUNTS,
   MonthlyPlans, monthKey,
 } from './lib/storage'
 import {
@@ -16,6 +20,9 @@ import {
   cloudDeleteTransaction, cloudUpdateTransaction,
   cloudLoadBalances, cloudSaveBalance,
   cloudLoadCategories, cloudSaveCategories,
+  cloudLoadAccounts, cloudSaveAccounts,
+  cloudLoadTransfers, cloudSaveTransfer,
+  cloudLoadRecurring, cloudSaveRecurring,
 } from './lib/cloudStorage'
 import { supabase } from './lib/supabase'
 import FactView from './components/MonthView'
@@ -50,6 +57,9 @@ export default function Home() {
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [openingBalances, setOpeningBalances] = useState<Record<string, number>>({})
   const [categories, setCategories] = useState<Category[]>(DEFAULT_CATEGORIES)
+  const [accounts, setAccounts] = useState<Account[]>(DEFAULT_ACCOUNTS)
+  const [transfers, setTransfers] = useState<Transfer[]>([])
+  const [recurring, setRecurring] = useState<RecurringPayment[]>([])
   const [notifications, setNotifications] = useState<AppNotification[]>([])
 
   useEffect(() => {
@@ -73,12 +83,18 @@ export default function Home() {
     const localTx = getTransactions()
     const localBalances = getOpeningBalances()
     const localCats = getStoredCategories()
+    const localAccounts = getAccounts()
+    const localTransfers = getTransfers()
+    const localRecurring = getRecurring()
 
-    const [cloudPlans, cloudTx, cloudBalances, cloudCats] = await Promise.all([
+    const [cloudPlans, cloudTx, cloudBalances, cloudCats, cloudAccounts, cloudTransfers, cloudRecurring] = await Promise.all([
       cloudLoadPlan(uid),
       cloudLoadTransactions(uid),
       cloudLoadBalances(uid),
       cloudLoadCategories(uid),
+      cloudLoadAccounts(uid),
+      cloudLoadTransfers(uid),
+      cloudLoadRecurring(uid),
     ])
 
     const finalPlans = cloudPlans ?? localPlans
@@ -89,19 +105,30 @@ export default function Home() {
       : []
     const finalBalances = cloudBalances ?? localBalances
     const finalCats = cloudCats ?? localCats
+    const finalAccounts = cloudAccounts ?? localAccounts
+    const finalTransfers = cloudTransfers ?? localTransfers
+    const finalRecurring = cloudRecurring ?? localRecurring
 
     if (!cloudPlans && Object.keys(localPlans).length > 0) await cloudSavePlan(uid, localPlans)
     if (!cloudCats) await cloudSaveCategories(uid, finalCats)
+    if (!cloudAccounts) await cloudSaveAccounts(uid, finalAccounts)
+    if (!cloudRecurring) await cloudSaveRecurring(uid, finalRecurring)
 
     setMonthlyPlans(finalPlans)
     setTransactions(finalTx)
     setOpeningBalances(finalBalances)
     setCategories(finalCats)
+    setAccounts(finalAccounts)
+    setTransfers(finalTransfers)
+    setRecurring(finalRecurring)
 
     saveMonthlyPlans(finalPlans)
     saveTransactions(finalTx)
     saveOpeningBalances(finalBalances)
     saveStoredCategories(finalCats)
+    saveAccounts(finalAccounts)
+    saveTransfers(finalTransfers)
+    saveRecurring(finalRecurring)
 
     setSyncing(false)
     setAppMode('app')
@@ -116,6 +143,9 @@ export default function Home() {
     setTransactions(getTransactions())
     setOpeningBalances(getOpeningBalances())
     setCategories(getStoredCategories())
+    setAccounts(getAccounts())
+    setTransfers(getTransfers())
+    setRecurring(getRecurring())
     setAppMode('app')
   }, [])
 
@@ -185,6 +215,19 @@ export default function Home() {
     saveTransactions(updated)
     if (userId) cloudUpdateTransaction(userId, tx)
   }, [transactions, userId])
+
+  const handleAddTransfer = useCallback(async (t: Transfer) => {
+    const updated = [...transfers, t]
+    setTransfers(updated)
+    saveTransfers(updated)
+    if (userId) cloudSaveTransfer(userId, t)
+  }, [transfers, userId])
+
+  const handleSaveRecurring = useCallback(async (r: RecurringPayment[]) => {
+    setRecurring(r)
+    saveRecurring(r)
+    if (userId) cloudSaveRecurring(userId, r)
+  }, [userId])
 
   const handleSetOpeningBalance = useCallback(
     async (amount: number) => {
@@ -315,10 +358,15 @@ export default function Home() {
             transactions={transactions}
             openingBalance={currentOpeningBalance}
             categories={categories}
+            accounts={accounts}
+            transfers={transfers}
+            recurring={recurring}
             onAddTransaction={handleAddTransaction}
             onDeleteTransaction={handleDeleteTransaction}
             onEditTransaction={handleEditTransaction}
             onSetOpeningBalance={handleSetOpeningBalance}
+            onAddTransfer={handleAddTransfer}
+            onSaveRecurring={handleSaveRecurring}
             onPrevMonth={prevMonth}
             onNextMonth={nextMonth}
           />

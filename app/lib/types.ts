@@ -15,6 +15,33 @@ export interface Transaction {
   amount: number
   timestamp: number
   note?: string
+  accountId?: string
+}
+
+export interface Account {
+  id: string
+  name: string
+  icon: string
+  initialBalance: number
+}
+
+export interface Transfer {
+  id: string
+  fromAccountId: string
+  toAccountId: string
+  amount: number
+  timestamp: number
+  note?: string
+}
+
+export interface RecurringPayment {
+  id: string
+  categoryId: string
+  accountId: string
+  amount: number
+  note?: string
+  dayOfMonth: number
+  active: boolean
 }
 
 export interface AppNotification {
