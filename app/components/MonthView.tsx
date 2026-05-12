@@ -250,19 +250,19 @@ export default function FactView({
       </div>
 
       {/* Category sections */}
-      <CategorySection title="💰 ДОХОДЫ" titleColor="text-green-400" lineColor="bg-green-900/40"
+      <CategorySection title="💰 ДОХОДЫ" titleColor="text-green-400" lineColor="bg-green-900/40" barColor="green"
         categories={incomeCategories} annualPlan={annualPlan} getActual={getActual} getCategoryTx={getCategoryTx}
         type="income" txListOpen={txList} onToggleTxList={id => setTxList(txList === id ? null : id)}
         onAdd={cat => openAddModal(cat, 'add')} onSubtract={cat => openAddModal(cat, 'subtract')}
         onEditTx={tx => setEditModal(tx)} onDeleteTx={onDeleteTransaction}
       />
-      <CategorySection title="🔒 ОБЯЗАТЕЛЬНЫЕ РАСХОДЫ" titleColor="text-orange-400" lineColor="bg-orange-900/40"
+      <CategorySection title="🔒 ОБЯЗАТЕЛЬНЫЕ РАСХОДЫ" titleColor="text-orange-400" lineColor="bg-orange-900/40" barColor="orange"
         categories={mandatoryCategories} annualPlan={annualPlan} getActual={getActual} getCategoryTx={getCategoryTx}
         type="expense" txListOpen={txList} onToggleTxList={id => setTxList(txList === id ? null : id)}
         onAdd={cat => openAddModal(cat, 'add')} onSubtract={cat => openAddModal(cat, 'subtract')}
         onEditTx={tx => setEditModal(tx)} onDeleteTx={onDeleteTransaction}
       />
-      <CategorySection title="🛒 ТЕКУЩИЕ РАСХОДЫ" titleColor="text-red-400" lineColor="bg-red-900/40"
+      <CategorySection title="🛒 ТЕКУЩИЕ РАСХОДЫ" titleColor="text-red-400" lineColor="bg-red-900/40" barColor="red"
         categories={currentCategories} annualPlan={annualPlan} getActual={getActual} getCategoryTx={getCategoryTx}
         type="expense" txListOpen={txList} onToggleTxList={id => setTxList(txList === id ? null : id)}
         onAdd={cat => openAddModal(cat, 'add')} onSubtract={cat => openAddModal(cat, 'subtract')}
@@ -333,10 +333,10 @@ function SummaryCard({ label, actual, planned, color }: { label: string; actual:
 }
 
 function CategorySection({
-  title, titleColor, lineColor, categories, annualPlan, getActual, getCategoryTx,
+  title, titleColor, lineColor, barColor, categories, annualPlan, getActual, getCategoryTx,
   type, txListOpen, onToggleTxList, onAdd, onSubtract, onEditTx, onDeleteTx,
 }: {
-  title: string; titleColor: string; lineColor: string
+  title: string; titleColor: string; lineColor: string; barColor: 'green' | 'orange' | 'red'
   categories: Category[]; annualPlan: AnnualPlan
   getActual: (id: string) => number; getCategoryTx: (id: string) => Transaction[]
   type: 'income' | 'expense'; txListOpen: string | null
@@ -369,7 +369,7 @@ function CategorySection({
                       <div className="flex items-center gap-1.5 flex-shrink-0">
                         {isOver && <span className="text-red-400 text-xs bg-red-900/30 px-1.5 py-0.5 rounded">⚠ превышен</span>}
                         {txs.length > 0 && (
-                          <span className={`text-xs px-1.5 py-0.5 rounded transition-colors ${isOpen ? 'bg-blue-800/50 text-blue-300' : 'bg-gray-700 text-gray-500'}`}>
+                          <span className={`text-xs px-1.5 py-0.5 rounded transition-colors ${isOpen ? barColor === 'green' ? 'bg-green-800/50 text-green-300' : barColor === 'orange' ? 'bg-orange-800/50 text-orange-300' : 'bg-red-800/50 text-red-300' : 'bg-gray-700 text-gray-500'}`}>
                             {txs.length} {isOpen ? '▲' : '▼'}
                           </span>
                         )}
@@ -381,7 +381,7 @@ function CategorySection({
                     </div>
                     {(planned > 0 || actual !== 0) && (
                       <div className="mt-2 w-full bg-gray-700 rounded-full h-1">
-                        <div className={`h-1 rounded-full transition-all duration-300 ${type === 'income' ? 'bg-green-500' : isOver ? 'bg-red-500' : pct >= 80 ? 'bg-orange-500' : 'bg-blue-500'}`} style={{ width: `${pct}%` }} />
+                        <div className={`h-1 rounded-full transition-all duration-300 ${isOver ? 'bg-red-500' : barColor === 'green' ? 'bg-green-500' : barColor === 'orange' ? 'bg-orange-500' : 'bg-red-500'}`} style={{ width: `${pct}%` }} />
                       </div>
                     )}
                   </div>
