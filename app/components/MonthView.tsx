@@ -330,8 +330,10 @@ function SummaryCard({ label, actual, planned, color }: { label: string; actual:
       <div className="text-gray-400 text-xs mb-1">{label}</div>
       <div className={`font-bold text-xs ${isOver ? 'text-red-400' : colors[color]}`}>{fmt(actual)}</div>
       {hasPlan && (
-        <div className={`text-xs mt-0.5 font-medium ${isOver ? 'text-red-400' : diff >= 0 ? 'text-gray-400' : 'text-red-400'}`}>
-          {isOver ? `перерасх. ${fmt(Math.abs(diff))}` : diff >= 0 ? `ост. ${fmt(diff)}` : `−${fmt(Math.abs(diff))}`}
+        <div className={`text-xs mt-0.5 font-medium ${color === 'green' ? diff >= 0 ? 'text-green-400' : 'text-red-400' : isOver ? 'text-red-400' : 'text-gray-400'}`}>
+          {color === 'green'
+            ? diff >= 0 ? `+${fmt(diff)}` : `−${fmt(Math.abs(diff))}`
+            : isOver ? `перерасх. ${fmt(Math.abs(diff))}` : `ост. ${fmt(diff)}`}
         </div>
       )}
     </div>
