@@ -124,7 +124,7 @@ export default function FactView({
     onAddTransaction({
       id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
       categoryId: r.categoryId,
-      amount: -r.amount,
+      amount: r.amount,
       timestamp: Date.now(),
       note: r.note,
       accountId: r.accountId || undefined,
