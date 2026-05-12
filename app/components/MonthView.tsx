@@ -364,7 +364,7 @@ function CategorySection({
           const actual = getActual(cat.id)
           const txs = getCategoryTx(cat.id)
           const pct = planned > 0 ? Math.min((actual / planned) * 100, 100) : actual > 0 ? 100 : 0
-          const isOver = type === 'expense' && planned > 0 && actual > planned
+          const isOver = type === 'expense' && planned > 0 && Math.round(actual) > Math.round(planned)
           const isOpen = txListOpen === cat.id
           return (
             <div key={cat.id} className={`bg-gray-800 rounded-xl overflow-hidden ${isOver ? 'ring-1 ring-red-500/30' : ''}`}>
