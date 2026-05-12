@@ -13,7 +13,7 @@ interface Props {
 }
 
 export default function ReportView({ monthlyPlans, transactions, currentYear, currentMonth }: Props) {
-  const [fromMonth, setFromMonth] = useState(0)
+  const [fromMonth, setFromMonth] = useState(currentMonth)
   const [toMonth, setToMonth] = useState(currentMonth)
   const [year, setYear] = useState(currentYear)
 
