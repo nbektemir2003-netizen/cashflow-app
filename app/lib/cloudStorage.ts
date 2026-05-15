@@ -38,7 +38,7 @@ export async function cloudSavePlan(userId: string, plans: MonthlyPlans): Promis
 export async function cloudLoadTransactions(userId: string): Promise<Transaction[] | null> {
   const { data, error } = await supabase
     .from('cashflow_transactions')
-    .select('id, category_id, amount, timestamp, note')
+    .select('id, category_id, amount, timestamp, note, account_id')
     .eq('user_id', userId)
     .order('timestamp', { ascending: true })
   if (error) return null
@@ -48,6 +48,7 @@ export async function cloudLoadTransactions(userId: string): Promise<Transaction
     amount: row.amount,
     timestamp: row.timestamp,
     note: row.note ?? undefined,
+    accountId: row.account_id ?? undefined,
   }))
 }
 
@@ -59,6 +60,7 @@ export async function cloudSaveTransaction(userId: string, t: Transaction): Prom
     amount: t.amount,
     timestamp: t.timestamp,
     note: t.note || null,
+    account_id: t.accountId || null,
   })
 }
 
@@ -70,6 +72,7 @@ export async function cloudUpdateTransaction(userId: string, t: Transaction): Pr
   await supabase.from('cashflow_transactions').upsert({
     id: t.id, user_id: userId, category_id: t.categoryId,
     amount: t.amount, timestamp: t.timestamp, note: t.note || null,
+    account_id: t.accountId || null,
   })
 }
 
@@ -83,6 +86,7 @@ export async function cloudUploadAllTransactions(userId: string, txs: Transactio
       amount: t.amount,
       timestamp: t.timestamp,
       note: t.note || null,
+      account_id: t.accountId || null,
     })),
   )
 }
