@@ -293,6 +293,7 @@ export default function FactView({
         <EditTransactionModal
           transaction={editModal}
           categories={categories}
+          accounts={accounts}
           onSave={tx => { onEditTransaction(tx); setEditModal(null) }}
           onDelete={id => { onDeleteTransaction(id); setEditModal(null) }}
           onClose={() => setEditModal(null)}

@@ -1,12 +1,13 @@
 'use client'
 
 import { useState } from 'react'
-import { Transaction, Category } from '../lib/types'
+import { Transaction, Category, Account } from '../lib/types'
 import { fmt, CURRENCY } from '../lib/data'
 
 interface Props {
   transaction: Transaction
   categories: Category[]
+  accounts: Account[]
   onSave: (updated: Transaction) => void
   onDelete: (id: string) => void
   onClose: () => void
@@ -14,11 +15,12 @@ interface Props {
 
 const PRESETS = [500, 1000, 5000, 10000, 50000, 100000]
 
-export default function EditTransactionModal({ transaction, categories, onSave, onDelete, onClose }: Props) {
+export default function EditTransactionModal({ transaction, categories, accounts, onSave, onDelete, onClose }: Props) {
   const isNegative = transaction.amount < 0
   const [rawAmount, setRawAmount] = useState(String(Math.abs(transaction.amount)))
   const [note, setNote] = useState(transaction.note || '')
   const [categoryId, setCategoryId] = useState(transaction.categoryId)
+  const [accountId, setAccountId] = useState(transaction.accountId || accounts[0]?.id || '')
   const [confirmDelete, setConfirmDelete] = useState(false)
 
   const incomeCategories = categories.filter(c => c.group === 'income')
@@ -31,8 +33,8 @@ export default function EditTransactionModal({ transaction, categories, onSave, 
   const handleSave = () => {
     const amount = parseFloat(rawAmount.replace(/\D/g, ''))
     if (isNaN(amount) || amount <= 0) return
-    const newAmount = selectedGroup === 'income' ? Math.abs(amount) : -Math.abs(amount)
-    onSave({ ...transaction, categoryId, amount: newAmount, note: note.trim() || undefined })
+    const newAmount = isNegative ? -Math.abs(amount) : Math.abs(amount)
+    onSave({ ...transaction, categoryId, amount: newAmount, note: note.trim() || undefined, accountId: accountId || undefined })
   }
 
   const date = new Date(transaction.timestamp)
@@ -62,6 +64,29 @@ export default function EditTransactionModal({ transaction, categories, onSave, 
             <CategoryGroup title="🔒 Обязательные" cats={mandatoryCategories} selected={categoryId} onSelect={setCategoryId} color="orange" />
             <CategoryGroup title="🛒 Текущие" cats={currentCategories} selected={categoryId} onSelect={setCategoryId} color="red" />
           </div>
+
+          {/* Account selector */}
+          {accounts.length > 0 && (
+            <div>
+              <div className="text-gray-400 text-xs mb-2">Счёт</div>
+              <div className="flex gap-2 flex-wrap">
+                {accounts.map(a => (
+                  <button
+                    key={a.id}
+                    onClick={() => setAccountId(a.id)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-sm transition-all ${
+                      accountId === a.id
+                        ? 'border-green-500 bg-green-900/30 text-white'
+                        : 'border-gray-700 text-gray-400 hover:border-gray-500'
+                    }`}
+                  >
+                    <span>{a.icon}</span>
+                    <span>{a.name}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Amount */}
           <div>
