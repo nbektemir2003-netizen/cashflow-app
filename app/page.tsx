@@ -76,6 +76,16 @@ export default function Home() {
     init()
   }, [])
 
+  // Показываем онбординг при первом входе
+  useEffect(() => {
+    if (appMode === 'app' && userId) {
+      const key = `finik_onboarded_${userId}`
+      if (!localStorage.getItem(key)) {
+        setShowOnboarding(true)
+      }
+    }
+  }, [appMode, userId])
+
   const loadForUser = async (uid: string, email: string) => {
     setSyncing(true)
     setUserId(uid)
@@ -134,12 +144,6 @@ export default function Home() {
 
     setSyncing(false)
     setAppMode('app')
-
-    // Показываем онбординг только при первом входе
-    const key = `finik_onboarded_${uid}`
-    if (!localStorage.getItem(key)) {
-      setShowOnboarding(true)
-    }
   }
 
   const handleAuthenticated = useCallback(async (uid: string, email: string) => {
