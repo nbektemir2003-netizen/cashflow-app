@@ -31,6 +31,7 @@ import ReportView from './components/ReportView'
 import HistoryView from './components/HistoryView'
 import NotificationToast from './components/NotificationToast'
 import AuthModal from './components/AuthModal'
+import OnboardingModal from './components/OnboardingModal'
 
 type Tab = 'fact' | 'plan' | 'report' | 'history'
 type AppMode = 'checking' | 'auth' | 'app'
@@ -48,6 +49,7 @@ export default function Home() {
   const [userId, setUserId] = useState<string | null>(null)
   const [userEmail, setUserEmail] = useState<string | null>(null)
   const [syncing, setSyncing] = useState(false)
+  const [showOnboarding, setShowOnboarding] = useState(false)
 
   const [currentYear, setCurrentYear] = useState(now.getFullYear())
   const [currentMonth, setCurrentMonth] = useState(now.getMonth())
@@ -132,6 +134,12 @@ export default function Home() {
 
     setSyncing(false)
     setAppMode('app')
+
+    // Показываем онбординг только при первом входе
+    const key = `finik_onboarded_${uid}`
+    if (!localStorage.getItem(key)) {
+      setShowOnboarding(true)
+    }
   }
 
   const handleAuthenticated = useCallback(async (uid: string, email: string) => {
@@ -395,6 +403,14 @@ export default function Home() {
           <HistoryView monthlyPlans={monthlyPlans} transactions={transactions} categories={categories} />
         )}
       </main>
+
+      {/* Onboarding */}
+      {showOnboarding && (
+        <OnboardingModal onDone={() => {
+          localStorage.setItem(`finik_onboarded_${userId}`, '1')
+          setShowOnboarding(false)
+        }} />
+      )}
 
       {/* Notifications */}
       <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-xs">
