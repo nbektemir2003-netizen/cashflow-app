@@ -13,6 +13,7 @@ export default function AuthModal({ onAuthenticated, onSkip }: Props) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [inviteCode, setInviteCode] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -21,6 +22,7 @@ export default function AuthModal({ onAuthenticated, onSkip }: Props) {
     setMode(m)
     setError('')
     setConfirmPassword('')
+    setInviteCode('')
   }
 
   const handleSubmit = async () => {
@@ -28,6 +30,7 @@ export default function AuthModal({ onAuthenticated, onSkip }: Props) {
     if (!email.trim() || !password) { setError('Введите email и пароль'); return }
     if (password.length < 6) { setError('Пароль — минимум 6 символов'); return }
     if (mode === 'register' && password !== confirmPassword) { setError('Пароли не совпадают'); return }
+    if (mode === 'register' && !inviteCode.trim()) { setError('Введите инвайт-код'); return }
 
     setLoading(true)
 
@@ -39,6 +42,25 @@ export default function AuthModal({ onAuthenticated, onSkip }: Props) {
         onAuthenticated(data.user.id, data.user.email!)
       }
     } else {
+      // Проверяем инвайт-код
+      const { data: codeData, error: codeErr } = await supabase
+        .from('cashflow_invite_codes')
+        .select('code, used')
+        .eq('code', inviteCode.trim().toUpperCase())
+        .maybeSingle()
+
+      if (codeErr || !codeData) {
+        setError('Неверный инвайт-код')
+        setLoading(false)
+        return
+      }
+      if (codeData.used) {
+        setError('Этот инвайт-код уже использован')
+        setLoading(false)
+        return
+      }
+
+      // Регистрируем пользователя
       const { data, error: err } = await supabase.auth.signUp({ email, password })
       if (err) {
         const msg = err.message.toLowerCase()
@@ -47,6 +69,12 @@ export default function AuthModal({ onAuthenticated, onSkip }: Props) {
         else if (msg.includes('invalid')) setError('Неверный формат email')
         else setError('Ошибка регистрации. Попробуйте позже')
       } else if (data.user) {
+        // Помечаем код как использованный
+        await supabase
+          .from('cashflow_invite_codes')
+          .update({ used: true, used_by_email: email.trim().toLowerCase() })
+          .eq('code', inviteCode.trim().toUpperCase())
+
         onAuthenticated(data.user.id, data.user.email!)
       }
     }
@@ -115,15 +143,25 @@ export default function AuthModal({ onAuthenticated, onSkip }: Props) {
               </button>
             </div>
             {mode === 'register' && (
-              <input
-                type={showPassword ? 'text' : 'password'}
-                value={confirmPassword}
-                onChange={e => setConfirmPassword(e.target.value)}
-                placeholder="Подтвердите пароль"
-                autoComplete="new-password"
-                className="w-full bg-gray-700 text-white p-3.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 placeholder-gray-500 text-sm"
-                onKeyDown={e => e.key === 'Enter' && handleSubmit()}
-              />
+              <>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={confirmPassword}
+                  onChange={e => setConfirmPassword(e.target.value)}
+                  placeholder="Подтвердите пароль"
+                  autoComplete="new-password"
+                  className="w-full bg-gray-700 text-white p-3.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 placeholder-gray-500 text-sm"
+                  onKeyDown={e => e.key === 'Enter' && handleSubmit()}
+                />
+                <input
+                  type="text"
+                  value={inviteCode}
+                  onChange={e => setInviteCode(e.target.value.toUpperCase())}
+                  placeholder="Инвайт-код (FINO-XXXXXX)"
+                  className="w-full bg-gray-700 text-white p-3.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 placeholder-gray-500 text-sm tracking-widest"
+                  onKeyDown={e => e.key === 'Enter' && handleSubmit()}
+                />
+              </>
             )}
           </div>
 
