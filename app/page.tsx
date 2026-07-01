@@ -21,7 +21,7 @@ import {
   cloudLoadBalances, cloudSaveBalance,
   cloudLoadCategories, cloudSaveCategories,
   cloudLoadAccounts, cloudSaveAccounts,
-  cloudLoadTransfers, cloudSaveTransfer,
+  cloudLoadTransfers, cloudSaveTransfer, cloudDeleteTransfer,
   cloudLoadRecurring, cloudSaveRecurring,
 } from './lib/cloudStorage'
 import { supabase } from './lib/supabase'
@@ -63,6 +63,7 @@ export default function Home() {
   const [transfers, setTransfers] = useState<Transfer[]>([])
   const [recurring, setRecurring] = useState<RecurringPayment[]>([])
   const [notifications, setNotifications] = useState<AppNotification[]>([])
+  const [lastAction, setLastAction] = useState<{ type: 'transaction' | 'transfer'; id: string } | null>(null)
 
   useEffect(() => {
     const init = async () => {
@@ -186,6 +187,7 @@ export default function Home() {
       setTransactions(updated)
       saveTransactions(updated)
       if (userId) cloudSaveTransaction(userId, transaction)
+      setLastAction({ type: 'transaction', id: transaction.id })
 
       const currentPlan = monthlyPlans[monthKey(currentYear, currentMonth)]?.amounts || {}
       const expenseCat = categories.filter(c => c.group !== 'income').find(c => c.id === transaction.categoryId)
@@ -233,7 +235,24 @@ export default function Home() {
     setTransfers(updated)
     saveTransfers(updated)
     if (userId) cloudSaveTransfer(userId, t)
+    setLastAction({ type: 'transfer', id: t.id })
   }, [transfers, userId])
+
+  const handleDeleteTransfer = useCallback(async (id: string) => {
+    const updated = transfers.filter(t => t.id !== id)
+    setTransfers(updated)
+    saveTransfers(updated)
+    if (userId) cloudDeleteTransfer(userId, id)
+  }, [transfers, userId])
+
+  // Отменяет последнее добавленное действие (расход/доход/перевод),
+  // возвращая деньги на исходный счёт
+  const handleUndo = useCallback(() => {
+    if (!lastAction) return
+    if (lastAction.type === 'transaction') handleDeleteTransaction(lastAction.id)
+    else handleDeleteTransfer(lastAction.id)
+    setLastAction(null)
+  }, [lastAction, handleDeleteTransaction, handleDeleteTransfer])
 
   const handleSaveRecurring = useCallback(async (r: RecurringPayment[]) => {
     setRecurring(r)
@@ -329,6 +348,15 @@ export default function Home() {
             {syncing && <span className="text-xs text-blue-400 animate-pulse">↑ синхр.</span>}
           </div>
           <div className="flex items-center gap-3">
+            {lastAction && (
+              <button
+                onClick={handleUndo}
+                title="Отменить последнее действие"
+                className="w-8 h-8 rounded-full bg-gray-700 hover:bg-yellow-800/50 text-gray-300 hover:text-yellow-300 flex items-center justify-center text-sm transition-colors"
+              >
+                ↩
+              </button>
+            )}
             <div className="text-right">
               <div className="text-gray-400 text-xs">{MONTHS_RU[currentMonth]} {currentYear}</div>
               <div className={`text-xs font-medium ${currentOpeningBalance >= 0 ? 'text-green-400' : 'text-red-400'}`}>
