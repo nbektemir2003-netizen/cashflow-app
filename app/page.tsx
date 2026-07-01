@@ -292,10 +292,19 @@ export default function Home() {
     return prevOpening + prevIncome - prevExpense
   }
 
-  // Остаток конкретного счёта на начало месяца, независимый от остальных счетов.
-  // Используется только для плиток "Счета" (Карта/Наличные/Депозит по отдельности),
-  // чтобы деньги депозита никогда не примешивались к карте и наоборот.
+  // Остаток конкретного счёта на начало месяца для плиток "Счета".
+  // Депозит и наличные считаются полностью независимо от карты — своей историей операций,
+  // не сбрасываясь каждый месяц. Карта — остаточная величина: общий остаток (шапка,
+  // который можно скорректировать вручную через ✏️) минус то, что накопили другие счета.
+  // Поэтому правка "Начального остатка" в шапке меняет именно карту, а депозит не трогает.
   const getAccountOpeningBalance = (accountId: string, year: number, month: number): number => {
+    const isDefault = accountId === accounts[0]?.id
+    if (isDefault) {
+      const othersTotal = accounts
+        .filter(a => a.id !== accountId)
+        .reduce((sum, a) => sum + getAccountOpeningBalance(a.id, year, month), 0)
+      return getOpeningBalance(year, month) - othersTotal
+    }
     if (month === 0 && year === now.getFullYear()) {
       return accounts.find(a => a.id === accountId)?.initialBalance || 0
     }
@@ -304,8 +313,7 @@ export default function Home() {
     const prevOpening = getAccountOpeningBalance(accountId, prevYear, prevMonth)
     const prevTx = transactions.filter(t => {
       const d = new Date(t.timestamp)
-      const belongsToAccount = t.accountId ? t.accountId === accountId : accountId === accounts[0]?.id
-      return d.getFullYear() === prevYear && d.getMonth() === prevMonth && belongsToAccount
+      return d.getFullYear() === prevYear && d.getMonth() === prevMonth && t.accountId === accountId
     })
     const incomeIds = new Set(categories.filter(c => c.group === 'income').map(c => c.id))
     const expenseIds = new Set(categories.filter(c => c.group !== 'income').map(c => c.id))
