@@ -271,27 +271,41 @@ export default function Home() {
     [openingBalances, currentYear, currentMonth, userId],
   )
 
-  const defaultAccountId = accounts[0]?.id
-
-  // Считает баланс, перенесённый на начало месяца для конкретного счёта.
-  // Каждый счёт независим: доходы/расходы/переводы других счетов (например, депозита)
-  // не должны попадать в перенос остатка карты, и наоборот.
-  const getAccountOpeningBalance = (accountId: string, year: number, month: number): number => {
-    const isDefault = accountId === defaultAccountId
+  // Общий остаток (по всем счетам вместе — карта + наличные + депозит),
+  // перенесённый на начало месяца. Показывается в шапке ("Начальный/Конечный остаток")
+  // и может быть скорректирован вручную через ✏️ — как и раньше.
+  const getOpeningBalance = (year: number, month: number): number => {
     const key = monthKey(year, month)
-    if (isDefault && openingBalances[key] !== undefined) return openingBalances[key]
+    if (openingBalances[key] !== undefined) return openingBalances[key]
+    if (month === 0 && year === now.getFullYear()) return 0
+    const prevMonth = month === 0 ? 11 : month - 1
+    const prevYear = month === 0 ? year - 1 : year
+    const prevOpening = getOpeningBalance(prevYear, prevMonth)
+    const prevTx = transactions.filter(t => {
+      const d = new Date(t.timestamp)
+      return d.getFullYear() === prevYear && d.getMonth() === prevMonth
+    })
+    const incomeIds = new Set(categories.filter(c => c.group === 'income').map(c => c.id))
+    const expenseIds = new Set(categories.filter(c => c.group !== 'income').map(c => c.id))
+    const prevIncome = prevTx.filter(t => incomeIds.has(t.categoryId)).reduce((s, t) => s + t.amount, 0)
+    const prevExpense = prevTx.filter(t => expenseIds.has(t.categoryId)).reduce((s, t) => s + t.amount, 0)
+    return prevOpening + prevIncome - prevExpense
+  }
+
+  // Остаток конкретного счёта на начало месяца, независимый от остальных счетов.
+  // Используется только для плиток "Счета" (Карта/Наличные/Депозит по отдельности),
+  // чтобы деньги депозита никогда не примешивались к карте и наоборот.
+  const getAccountOpeningBalance = (accountId: string, year: number, month: number): number => {
     if (month === 0 && year === now.getFullYear()) {
-      if (isDefault) return 0
       return accounts.find(a => a.id === accountId)?.initialBalance || 0
     }
     const prevMonth = month === 0 ? 11 : month - 1
     const prevYear = month === 0 ? year - 1 : year
     const prevOpening = getAccountOpeningBalance(accountId, prevYear, prevMonth)
-    const belongsToAccount = (t: { accountId?: string }) =>
-      isDefault ? (!t.accountId || t.accountId === defaultAccountId) : t.accountId === accountId
     const prevTx = transactions.filter(t => {
       const d = new Date(t.timestamp)
-      return d.getFullYear() === prevYear && d.getMonth() === prevMonth && belongsToAccount(t)
+      const belongsToAccount = t.accountId ? t.accountId === accountId : accountId === accounts[0]?.id
+      return d.getFullYear() === prevYear && d.getMonth() === prevMonth && belongsToAccount
     })
     const incomeIds = new Set(categories.filter(c => c.group === 'income').map(c => c.id))
     const expenseIds = new Set(categories.filter(c => c.group !== 'income').map(c => c.id))
@@ -305,9 +319,6 @@ export default function Home() {
     const transfersOut = prevTransfers.filter(t => t.fromAccountId === accountId).reduce((s, t) => s + t.amount, 0)
     return prevOpening + prevIncome - prevExpense + transfersIn - transfersOut
   }
-
-  const getOpeningBalance = (year: number, month: number): number =>
-    getAccountOpeningBalance(defaultAccountId, year, month)
 
   const prevMonth = () => {
     if (currentMonth === 0) { setCurrentMonth(11); setCurrentYear(y => y - 1) }
