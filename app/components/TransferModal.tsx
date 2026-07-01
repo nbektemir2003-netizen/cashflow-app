@@ -21,7 +21,7 @@ export default function TransferModal({ accounts, onSave, onClose }: Props) {
 
   const handleSave = () => {
     if (fromId === toId) { setError('Выберите разные счета'); return }
-    const amount = parseFloat(rawAmount.replace(/\D/g, ''))
+    const amount = parseFloat(rawAmount.replace(',', '.'))
     if (isNaN(amount) || amount <= 0) { setError('Введите сумму'); return }
     onSave({
       id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
@@ -84,8 +84,17 @@ export default function TransferModal({ accounts, onSave, onClose }: Props) {
 
         {/* Amount */}
         <div className="relative mb-3">
-          <input type="text" inputMode="numeric" value={rawAmount}
-            onChange={e => { setRawAmount(e.target.value.replace(/\D/g, '')); setError('') }}
+          <input type="text" inputMode="decimal" value={rawAmount}
+            onChange={e => {
+              // Разрешаем цифры и одну запятую/точку (десятичный разделитель)
+              let v = e.target.value.replace(/[^\d.,]/g, '').replace('.', ',')
+              const firstComma = v.indexOf(',')
+              if (firstComma !== -1) {
+                v = v.slice(0, firstComma + 1) + v.slice(firstComma + 1).replace(/,/g, '')
+              }
+              setRawAmount(v)
+              setError('')
+            }}
             placeholder="0" autoFocus
             className="w-full bg-gray-800 text-white text-2xl font-bold p-3 pr-12 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
             onKeyDown={e => e.key === 'Enter' && handleSave()} />

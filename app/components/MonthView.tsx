@@ -14,6 +14,7 @@ interface Props {
   annualPlan: AnnualPlan
   transactions: Transaction[]
   openingBalance: number
+  accountOpeningBalances: Record<string, number>
   categories: Category[]
   accounts: Account[]
   transfers: Transfer[]
@@ -36,7 +37,7 @@ interface AddModalState {
 }
 
 export default function FactView({
-  year, month, annualPlan, transactions, openingBalance, categories,
+  year, month, annualPlan, transactions, openingBalance, accountOpeningBalances, categories,
   accounts, transfers, recurring,
   onAddTransaction, onDeleteTransaction, onEditTransaction,
   onSetOpeningBalance, onAddTransfer, onSaveRecurring,
@@ -77,7 +78,8 @@ export default function FactView({
     })
     const tIn = monthTransfers.filter(t => t.toAccountId === accountId).reduce((s, t) => s + t.amount, 0)
     const tOut = monthTransfers.filter(t => t.fromAccountId === accountId).reduce((s, t) => s + t.amount, 0)
-    const startBalance = isDefault ? openingBalance : 0
+    // Каждый счёт (в т.ч. депозит) хранит и переносит свой баланс независимо от других счетов
+    const startBalance = accountOpeningBalances[accountId] ?? 0
     return startBalance + income - expense + tIn - tOut
   }
 
@@ -107,13 +109,22 @@ export default function FactView({
   const openAddModal = (cat: Category, type: 'add' | 'subtract') =>
     setAddModal({ categoryId: cat.id, categoryName: cat.name, categoryIcon: cat.icon, type })
 
+  // Строим timestamp с выбранными в интерфейсе годом/месяцем, сохраняя текущие день/время
+  // (чтобы запись попадала в выбранный месяц, а не в текущий календарный)
+  const buildTimestampForSelectedMonth = () => {
+    const now = new Date()
+    const daysInMonth = new Date(year, month + 1, 0).getDate()
+    const day = Math.min(now.getDate(), daysInMonth)
+    return new Date(year, month, day, now.getHours(), now.getMinutes(), now.getSeconds(), now.getMilliseconds()).getTime()
+  }
+
   const handleAddConfirm = (amount: number, note?: string, accountId?: string) => {
     if (!addModal) return
     onAddTransaction({
       id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
       categoryId: addModal.categoryId,
       amount: addModal.type === 'subtract' ? -amount : amount,
-      timestamp: Date.now(),
+      timestamp: buildTimestampForSelectedMonth(),
       note,
       accountId: accountId || undefined,
     })
@@ -125,7 +136,7 @@ export default function FactView({
       id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
       categoryId: r.categoryId,
       amount: r.amount,
-      timestamp: Date.now(),
+      timestamp: buildTimestampForSelectedMonth(),
       note: r.note,
       accountId: r.accountId || undefined,
     })
@@ -303,7 +314,7 @@ export default function FactView({
       {showTransfer && (
         <TransferModal
           accounts={accounts}
-          onSave={t => { onAddTransfer(t); setShowTransfer(false) }}
+          onSave={t => { onAddTransfer({ ...t, timestamp: buildTimestampForSelectedMonth() }); setShowTransfer(false) }}
           onClose={() => setShowTransfer(false)}
         />
       )}
