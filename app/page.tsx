@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { MONTHS_RU, fmt, DEFAULT_CATEGORIES } from './lib/data'
+import { MONTHS_RU, fmt, DEFAULT_CATEGORIES, DEPOSIT_TOPUP_CATEGORY_ID } from './lib/data'
 import { Transaction, AppNotification, Category, Account, Transfer, RecurringPayment } from './lib/types'
 import {
   getTransactions, saveTransactions,
@@ -11,7 +11,7 @@ import {
   getAccounts, saveAccounts,
   getTransfers, saveTransfers,
   getRecurring, saveRecurring,
-  DEFAULT_ACCOUNTS,
+  DEFAULT_ACCOUNTS, DEPOSIT_ACCOUNT_ID,
   MonthlyPlans, monthKey,
 } from './lib/storage'
 import {
@@ -337,7 +337,18 @@ export default function Home() {
     })
     const transfersIn = prevTransfers.filter(t => t.toAccountId === accountId).reduce((s, t) => s + t.amount, 0)
     const transfersOut = prevTransfers.filter(t => t.fromAccountId === accountId).reduce((s, t) => s + t.amount, 0)
-    return prevOpening + prevIncome - prevExpense + transfersIn - transfersOut
+    // Категория "Депозит" списывается со своего счёта как обычный расход, но сумма
+    // также переносится на счёт "Депозит" — см. такую же логику в MonthView.getAccountBalance
+    const depositTopUpsCredit = accountId === DEPOSIT_ACCOUNT_ID
+      ? transactions
+          .filter(t => {
+            const d = new Date(t.timestamp)
+            return d.getFullYear() === prevYear && d.getMonth() === prevMonth
+              && t.categoryId === DEPOSIT_TOPUP_CATEGORY_ID && t.accountId !== DEPOSIT_ACCOUNT_ID
+          })
+          .reduce((s, t) => s + Math.abs(t.amount), 0)
+      : 0
+    return prevOpening + prevIncome - prevExpense + transfersIn - transfersOut + depositTopUpsCredit
   }
 
   const prevMonth = () => {

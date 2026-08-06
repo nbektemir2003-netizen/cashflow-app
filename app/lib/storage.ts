@@ -10,10 +10,12 @@ const ACCOUNTS_KEY = 'cashflow_accounts'
 const TRANSFERS_KEY = 'cashflow_transfers'
 const RECURRING_KEY = 'cashflow_recurring'
 
+export const DEPOSIT_ACCOUNT_ID = 'deposit'
+
 export const DEFAULT_ACCOUNTS: Account[] = [
   { id: 'card', name: 'Карта', icon: '💳', initialBalance: 0 },
   { id: 'cash', name: 'Наличные', icon: '💵', initialBalance: 0 },
-  { id: 'deposit', name: 'Депозит', icon: '🏦', initialBalance: 0 },
+  { id: DEPOSIT_ACCOUNT_ID, name: 'Депозит', icon: '🏦', initialBalance: 0 },
 ]
 
 export type MonthPlan = {

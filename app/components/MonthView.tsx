@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { MONTHS_RU, fmt } from '../lib/data'
+import { MONTHS_RU, fmt, DEPOSIT_TOPUP_CATEGORY_ID } from '../lib/data'
+import { DEPOSIT_ACCOUNT_ID } from '../lib/storage'
 import { AnnualPlan, Transaction, Category, Account, Transfer, RecurringPayment } from '../lib/types'
 import AmountModal from './AmountModal'
 import EditTransactionModal from './EditTransactionModal'
@@ -78,9 +79,16 @@ export default function FactView({
     })
     const tIn = monthTransfers.filter(t => t.toAccountId === accountId).reduce((s, t) => s + t.amount, 0)
     const tOut = monthTransfers.filter(t => t.fromAccountId === accountId).reduce((s, t) => s + t.amount, 0)
+    // Категория "Депозит" списывается как обычный расход со своего счёта (карта/наличные),
+    // но при этом сумма также зачисляется на счёт "Депозит" — как будто это перевод.
+    const depositTopUps = accountId === DEPOSIT_ACCOUNT_ID
+      ? monthTx
+          .filter(t => t.categoryId === DEPOSIT_TOPUP_CATEGORY_ID && t.accountId !== DEPOSIT_ACCOUNT_ID)
+          .reduce((s, t) => s + Math.abs(t.amount), 0)
+      : 0
     // Каждый счёт (в т.ч. депозит) хранит и переносит свой баланс независимо от других счетов
     const startBalance = accountOpeningBalances[accountId] ?? 0
-    return startBalance + income - expense + tIn - tOut
+    return startBalance + income - expense + tIn - tOut + depositTopUps
   }
 
   const totalIncomeActual = incomeCategories.reduce((s, c) => s + getActual(c.id), 0)

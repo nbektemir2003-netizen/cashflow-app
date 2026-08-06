@@ -16,6 +16,7 @@ export const DEFAULT_CATEGORIES: Category[] = [
   { id: 'insurance', name: 'Страховка', group: 'mandatory', icon: '🛡️' },
   { id: 'subscriptions', name: 'Подписки', group: 'mandatory', icon: '📱' },
   { id: 'internet', name: 'Связь / интернет', group: 'mandatory', icon: '📡' },
+  { id: 'deposit_topup', name: 'Депозит', group: 'mandatory', icon: '🐖' },
 
   // Текущие расходы
   { id: 'food', name: 'Еда / продукты', group: 'current', icon: '🛒' },
@@ -31,6 +32,11 @@ export const DEFAULT_CATEGORIES: Category[] = [
   { id: 'travel', name: 'Путешествия', group: 'current', icon: '✈️' },
   { id: 'other_expense', name: 'Прочие расходы', group: 'current', icon: '📦' },
 ]
+
+// Transactions in this category count as a mandatory expense (like any other),
+// but also credit the Deposit account's balance — see getAccountBalance /
+// getAccountOpeningBalance in MonthView.tsx / page.tsx.
+export const DEPOSIT_TOPUP_CATEGORY_ID = 'deposit_topup'
 
 // Legacy alias so old imports still work (used in HistoryView, ReportView)
 export const CATEGORIES = DEFAULT_CATEGORIES
