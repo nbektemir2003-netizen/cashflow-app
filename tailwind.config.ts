@@ -1,5 +1,6 @@
 import type { Config } from 'tailwindcss'
 
+// Light/dark theme toggle uses the 'dark' class on <html>
 const config: Config = {
   darkMode: 'class',
   content: [
