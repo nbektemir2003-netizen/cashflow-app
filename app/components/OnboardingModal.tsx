@@ -44,7 +44,7 @@ export default function OnboardingModal({ onDone }: Props) {
   return (
     <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
-        <div className={`bg-gradient-to-b ${slide.color} rounded-2xl border border-gray-700/50 overflow-hidden`}>
+        <div className={`bg-gradient-to-b ${slide.color} rounded-2xl border border-gray-300 dark:border-gray-700/50 overflow-hidden`}>
 
           {/* Progress dots */}
           <div className="flex justify-center gap-2 pt-5">
@@ -52,7 +52,7 @@ export default function OnboardingModal({ onDone }: Props) {
               <div
                 key={i}
                 className={`h-1.5 rounded-full transition-all duration-300 ${
-                  i === step ? 'w-6 bg-green-400' : i < step ? 'w-3 bg-green-700' : 'w-3 bg-gray-600'
+                  i === step ? 'w-6 bg-green-400' : i < step ? 'w-3 bg-green-700' : 'w-3 bg-gray-400 dark:bg-gray-600'
                 }`}
               />
             ))}
@@ -61,10 +61,10 @@ export default function OnboardingModal({ onDone }: Props) {
           {/* Content */}
           <div className="px-6 py-8 text-center">
             <div className="text-6xl mb-5">{slide.icon}</div>
-            <h2 className="text-white font-bold text-xl mb-3 leading-snug">{slide.title}</h2>
-            <p className="text-gray-400 text-sm leading-relaxed mb-4">{slide.desc}</p>
+            <h2 className="text-gray-900 dark:text-white font-bold text-xl mb-3 leading-snug">{slide.title}</h2>
+            <p className="text-gray-600 dark:text-gray-400 text-sm leading-relaxed mb-4">{slide.desc}</p>
             {slide.tip && (
-              <div className="bg-gray-800/60 rounded-xl px-4 py-2.5 text-gray-300 text-xs">
+              <div className="bg-gray-200 dark:bg-gray-800/60 rounded-xl px-4 py-2.5 text-gray-700 dark:text-gray-300 text-xs">
                 {slide.tip}
               </div>
             )}
@@ -75,7 +75,7 @@ export default function OnboardingModal({ onDone }: Props) {
             {step > 0 && (
               <button
                 onClick={() => setStep(s => s - 1)}
-                className="flex-1 py-3 rounded-xl bg-gray-700 hover:bg-gray-600 text-gray-300 text-sm transition-colors"
+                className="flex-1 py-3 rounded-xl bg-gray-300 dark:bg-gray-700 hover:bg-gray-400 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 text-sm transition-colors"
               >
                 ← Назад
               </button>
@@ -92,7 +92,7 @@ export default function OnboardingModal({ onDone }: Props) {
           {!isLast && (
             <button
               onClick={onDone}
-              className="w-full pb-4 text-gray-600 hover:text-gray-400 text-xs transition-colors"
+              className="w-full pb-4 text-gray-400 dark:text-gray-600 hover:text-gray-600 dark:hover:text-gray-400 text-xs transition-colors"
             >
               Пропустить
             </button>

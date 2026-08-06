@@ -152,15 +152,15 @@ export default function FactView({
     <div>
       {/* Month navigation */}
       <div className="flex items-center justify-between mb-5">
-        <button onClick={onPrevMonth} className="w-10 h-10 rounded-full bg-gray-800 hover:bg-gray-700 flex items-center justify-center text-white text-lg transition-colors">←</button>
+        <button onClick={onPrevMonth} className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 flex items-center justify-center text-gray-900 dark:text-white text-lg transition-colors">←</button>
         <div className="text-center">
-          <div className="text-xl font-bold text-white flex items-center justify-center gap-2">
+          <div className="text-xl font-bold text-gray-900 dark:text-white flex items-center justify-center gap-2">
             {MONTHS_RU[month]}
             {isCurrentMonth && <span className="text-xs text-green-400 bg-green-400/10 px-2 py-0.5 rounded-full font-normal">сейчас</span>}
           </div>
           <div className="text-gray-500 text-sm">{year}</div>
         </div>
-        <button onClick={onNextMonth} className="w-10 h-10 rounded-full bg-gray-800 hover:bg-gray-700 flex items-center justify-center text-white text-lg transition-colors">→</button>
+        <button onClick={onNextMonth} className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 flex items-center justify-center text-gray-900 dark:text-white text-lg transition-colors">→</button>
       </div>
 
       {/* Accounts */}
@@ -177,10 +177,10 @@ export default function FactView({
             {accounts.map(acc => {
               const bal = getAccountBalance(acc.id)
               return (
-                <div key={acc.id} className="bg-gray-800 rounded-xl p-2.5 text-center border border-gray-700/50">
+                <div key={acc.id} className="bg-gray-200 dark:bg-gray-800 rounded-xl p-2.5 text-center border border-gray-300 dark:border-gray-700/50">
                   <div className="text-xl mb-1">{acc.icon}</div>
-                  <div className="text-gray-400 text-xs">{acc.name}</div>
-                  <div className={`font-bold text-xs mt-0.5 ${bal >= 0 ? 'text-white' : 'text-red-400'}`}>{fmt(bal)}</div>
+                  <div className="text-gray-600 dark:text-gray-400 text-xs">{acc.name}</div>
+                  <div className={`font-bold text-xs mt-0.5 ${bal >= 0 ? 'text-gray-900 dark:text-white' : 'text-red-400'}`}>{fmt(bal)}</div>
                 </div>
               )
             })}
@@ -193,7 +193,7 @@ export default function FactView({
         <div className="mb-4 bg-yellow-900/20 border border-yellow-800/30 rounded-xl p-3">
           <div className="flex items-center justify-between mb-2">
             <span className="text-yellow-400 text-xs font-bold">🔄 Повторяющиеся</span>
-            <button onClick={() => setShowRecurring(true)} className="text-gray-500 hover:text-gray-300 text-xs px-2 py-0.5 rounded-lg hover:bg-gray-700 transition-colors">⚙ Настроить</button>
+            <button onClick={() => setShowRecurring(true)} className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 text-xs px-2 py-0.5 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-700 transition-colors">⚙ Настроить</button>
           </div>
           <div className="space-y-1.5">
             {pendingRecurring.map(r => {
@@ -204,10 +204,10 @@ export default function FactView({
                 <div key={r.id} className="flex items-center gap-2">
                   <span className="text-base">{cat.icon}</span>
                   <div className="flex-1 min-w-0">
-                    <span className="text-white text-sm">{cat.name}</span>
+                    <span className="text-gray-900 dark:text-white text-sm">{cat.name}</span>
                     {acc && <span className="text-gray-500 text-xs ml-1">· {acc.icon} {acc.name}</span>}
                   </div>
-                  <span className="text-gray-400 text-xs">{fmt(r.amount)}</span>
+                  <span className="text-gray-600 dark:text-gray-400 text-xs">{fmt(r.amount)}</span>
                   <button onClick={() => handleAddRecurring(r)}
                     className="text-xs bg-yellow-700/50 hover:bg-yellow-600/60 text-yellow-200 px-2.5 py-1 rounded-lg transition-colors whitespace-nowrap">
                     + Добавить
@@ -221,7 +221,7 @@ export default function FactView({
 
       {recurring.length > 0 && pendingRecurring.length === 0 && (
         <div className="mb-4 flex justify-end">
-          <button onClick={() => setShowRecurring(true)} className="text-gray-600 hover:text-gray-400 text-xs flex items-center gap-1 transition-colors">
+          <button onClick={() => setShowRecurring(true)} className="text-gray-400 dark:text-gray-600 hover:text-gray-600 dark:hover:text-gray-400 text-xs flex items-center gap-1 transition-colors">
             🔄 Повторяющиеся платежи
           </button>
         </div>
@@ -229,27 +229,27 @@ export default function FactView({
 
       {/* Balance row */}
       <div className="grid grid-cols-2 gap-3 mb-4">
-        <div className="bg-gray-800 rounded-xl p-3 border border-gray-700/50">
-          <div className="text-gray-400 text-xs mb-1">Начальный остаток</div>
+        <div className="bg-gray-200 dark:bg-gray-800 rounded-xl p-3 border border-gray-300 dark:border-gray-700/50">
+          <div className="text-gray-600 dark:text-gray-400 text-xs mb-1">Начальный остаток</div>
           {editingBalance ? (
             <div className="flex items-center gap-2">
               <input type="number" value={balanceInput} onChange={e => setBalanceInput(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && saveBalance()}
-                className="flex-1 bg-gray-700 text-white text-sm p-1.5 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 w-0" autoFocus />
+                className="flex-1 bg-gray-300 dark:bg-gray-700 text-gray-900 dark:text-white text-sm p-1.5 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 w-0" autoFocus />
               <button onClick={saveBalance} className="text-green-400 text-sm font-medium hover:text-green-300">✓</button>
             </div>
           ) : (
             <button onClick={() => { setBalanceInput(String(openingBalance)); setEditingBalance(true) }}
-              className="text-white font-bold text-sm hover:text-blue-300 transition-colors text-left w-full">
-              {fmt(openingBalance)}<span className="text-gray-600 text-xs ml-1">✏️</span>
+              className="text-gray-900 dark:text-white font-bold text-sm hover:text-blue-300 transition-colors text-left w-full">
+              {fmt(openingBalance)}<span className="text-gray-400 dark:text-gray-600 text-xs ml-1">✏️</span>
             </button>
           )}
-          <div className="text-gray-600 text-xs mt-0.5">перенос с пред. месяца</div>
+          <div className="text-gray-400 dark:text-gray-600 text-xs mt-0.5">перенос с пред. месяца</div>
         </div>
         <div className={`rounded-xl p-3 border ${closingBalance >= 0 ? 'bg-green-900/20 border-green-800/40' : 'bg-red-900/20 border-red-800/40'}`}>
-          <div className="text-gray-400 text-xs mb-1">Конечный остаток</div>
+          <div className="text-gray-600 dark:text-gray-400 text-xs mb-1">Конечный остаток</div>
           <div className={`font-bold text-sm ${closingBalance >= 0 ? 'text-green-400' : 'text-red-400'}`}>{fmt(closingBalance)}</div>
-          <div className="text-gray-600 text-xs mt-0.5">начало + доходы − расходы</div>
+          <div className="text-gray-400 dark:text-gray-600 text-xs mt-0.5">начало + доходы − расходы</div>
         </div>
       </div>
 
@@ -283,7 +283,7 @@ export default function FactView({
       {/* Recurring manage link (if no pending) */}
       {recurring.length === 0 && (
         <div className="text-center mt-2 mb-4">
-          <button onClick={() => setShowRecurring(true)} className="text-gray-600 hover:text-gray-400 text-xs transition-colors">
+          <button onClick={() => setShowRecurring(true)} className="text-gray-400 dark:text-gray-600 hover:text-gray-600 dark:hover:text-gray-400 text-xs transition-colors">
             + Настроить повторяющиеся платежи
           </button>
         </div>
@@ -338,11 +338,11 @@ function SummaryCard({ label, actual, planned, color }: { label: string; actual:
   const diff = color === 'green' ? actual - planned : planned - actual
   const hasPlan = planned > 0
   return (
-    <div className="bg-gray-800 rounded-xl p-2.5 text-center border border-gray-700/50">
-      <div className="text-gray-400 text-xs mb-1">{label}</div>
+    <div className="bg-gray-200 dark:bg-gray-800 rounded-xl p-2.5 text-center border border-gray-300 dark:border-gray-700/50">
+      <div className="text-gray-600 dark:text-gray-400 text-xs mb-1">{label}</div>
       <div className={`font-bold text-xs ${isOver ? 'text-red-400' : colors[color]}`}>{fmt(actual)}</div>
       {hasPlan && (
-        <div className={`text-xs mt-0.5 font-medium ${color === 'green' ? diff >= 0 ? 'text-green-400' : 'text-red-400' : isOver ? 'text-red-400' : 'text-gray-400'}`}>
+        <div className={`text-xs mt-0.5 font-medium ${color === 'green' ? diff >= 0 ? 'text-green-400' : 'text-red-400' : isOver ? 'text-red-400' : 'text-gray-600 dark:text-gray-400'}`}>
           {color === 'green'
             ? diff >= 0 ? `+${fmt(diff)}` : `−${fmt(Math.abs(diff))}`
             : isOver ? `перерасх. ${fmt(Math.abs(diff))}` : `ост. ${fmt(diff)}`}
@@ -379,46 +379,46 @@ function CategorySection({
           const isOver = type === 'expense' && planned > 0 && Math.round(actual) > Math.round(planned)
           const isOpen = txListOpen === cat.id
           return (
-            <div key={cat.id} className={`bg-gray-800 rounded-xl overflow-hidden ${isOver ? 'ring-1 ring-red-500/30' : ''}`}>
+            <div key={cat.id} className={`bg-gray-200 dark:bg-gray-800 rounded-xl overflow-hidden ${isOver ? 'ring-1 ring-red-500/30' : ''}`}>
               <div className="p-3">
                 <div className="flex items-center gap-3">
                   <span className="text-xl flex-shrink-0">{cat.icon}</span>
                   <div className="flex-1 min-w-0 cursor-pointer" onClick={() => txs.length > 0 && onToggleTxList(cat.id)}>
                     <div className="flex items-center justify-between gap-1">
-                      <span className="text-white text-sm font-medium truncate">{cat.name}</span>
+                      <span className="text-gray-900 dark:text-white text-sm font-medium truncate">{cat.name}</span>
                       <div className="flex items-center gap-1.5 flex-shrink-0">
                         {isOver && <span className="text-red-400 text-xs bg-red-900/30 px-1.5 py-0.5 rounded">⚠ превышен</span>}
                         {txs.length > 0 && (
-                          <span className={`text-xs px-1.5 py-0.5 rounded transition-colors ${isOpen ? barColor === 'green' ? 'bg-green-800/50 text-green-300' : barColor === 'orange' ? 'bg-orange-800/50 text-orange-300' : 'bg-red-800/50 text-red-300' : 'bg-gray-700 text-gray-500'}`}>
+                          <span className={`text-xs px-1.5 py-0.5 rounded transition-colors ${isOpen ? barColor === 'green' ? 'bg-green-800/50 text-green-300' : barColor === 'orange' ? 'bg-orange-800/50 text-orange-300' : 'bg-red-800/50 text-red-300' : 'bg-gray-300 dark:bg-gray-700 text-gray-500'}`}>
                             {txs.length} {isOpen ? '▲' : '▼'}
                           </span>
                         )}
                       </div>
                     </div>
                     <div className="flex justify-between text-xs text-gray-500 mt-0.5">
-                      <span>факт: <span className={type === 'income' ? 'text-green-400' : isOver ? 'text-red-400' : 'text-gray-300'}>{fmt(actual)}</span></span>
+                      <span>факт: <span className={type === 'income' ? 'text-green-400' : isOver ? 'text-red-400' : 'text-gray-700 dark:text-gray-300'}>{fmt(actual)}</span></span>
                       <span>{planned > 0 ? `план: ${fmt(planned)}` : 'план не задан'}</span>
                     </div>
                     {(planned > 0 || actual !== 0) && (
-                      <div className="mt-2 w-full bg-gray-700 rounded-full h-1">
+                      <div className="mt-2 w-full bg-gray-300 dark:bg-gray-700 rounded-full h-1">
                         <div className={`h-1 rounded-full transition-all duration-300 ${isOver ? 'bg-red-500' : barColor === 'green' ? 'bg-green-500' : barColor === 'orange' ? 'bg-orange-500' : 'bg-red-500'}`} style={{ width: `${pct}%` }} />
                       </div>
                     )}
                   </div>
                   <div className="flex gap-1.5 flex-shrink-0">
-                    <button onClick={() => onSubtract(cat)} className="w-8 h-8 rounded-full bg-gray-700 hover:bg-red-800/70 text-gray-300 hover:text-white flex items-center justify-center text-lg font-bold transition-colors">−</button>
-                    <button onClick={() => onAdd(cat)} className="w-8 h-8 rounded-full bg-gray-700 hover:bg-green-800/70 text-gray-300 hover:text-white flex items-center justify-center text-lg font-bold transition-colors">+</button>
+                    <button onClick={() => onSubtract(cat)} className="w-8 h-8 rounded-full bg-gray-300 dark:bg-gray-700 hover:bg-red-800/70 text-gray-700 dark:text-gray-300 hover:text-white flex items-center justify-center text-lg font-bold transition-colors">−</button>
+                    <button onClick={() => onAdd(cat)} className="w-8 h-8 rounded-full bg-gray-300 dark:bg-gray-700 hover:bg-green-800/70 text-gray-700 dark:text-gray-300 hover:text-white flex items-center justify-center text-lg font-bold transition-colors">+</button>
                   </div>
                 </div>
               </div>
 
               {isOpen && txs.length > 0 && (
-                <div className="border-t border-gray-700/60">
+                <div className="border-t border-gray-300 dark:border-gray-700/60">
                   {txs.map((tx, i) => {
                     const d = new Date(tx.timestamp)
                     const timeStr = d.toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
                     return (
-                      <div key={tx.id} className={`flex items-center gap-3 px-3 py-2.5 ${i < txs.length - 1 ? 'border-b border-gray-700/40' : ''}`}>
+                      <div key={tx.id} className={`flex items-center gap-3 px-3 py-2.5 ${i < txs.length - 1 ? 'border-b border-gray-300 dark:border-gray-700/40' : ''}`}>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
                             <span className={`text-sm font-semibold ${type === 'income' ? 'text-green-400' : 'text-red-400'}`}>
@@ -426,12 +426,12 @@ function CategorySection({
                             </span>
                             {tx.note && <span className="text-gray-500 text-xs truncate">{tx.note}</span>}
                           </div>
-                          <div className="text-gray-600 text-xs">{timeStr}</div>
+                          <div className="text-gray-400 dark:text-gray-600 text-xs">{timeStr}</div>
                         </div>
                         <button onClick={() => onEditTx(tx)}
-                          className="w-7 h-7 rounded-lg bg-gray-700 hover:bg-blue-800/50 text-gray-500 hover:text-blue-300 flex items-center justify-center text-sm transition-colors">✏</button>
+                          className="w-7 h-7 rounded-lg bg-gray-300 dark:bg-gray-700 hover:bg-blue-800/50 text-gray-500 hover:text-blue-300 flex items-center justify-center text-sm transition-colors">✏</button>
                         <button onClick={() => onDeleteTx(tx.id)}
-                          className="w-7 h-7 rounded-lg bg-gray-700 hover:bg-red-900/50 text-gray-600 hover:text-red-400 flex items-center justify-center text-sm transition-colors">×</button>
+                          className="w-7 h-7 rounded-lg bg-gray-300 dark:bg-gray-700 hover:bg-red-900/50 text-gray-400 dark:text-gray-600 hover:text-red-400 flex items-center justify-center text-sm transition-colors">×</button>
                       </div>
                     )
                   })}

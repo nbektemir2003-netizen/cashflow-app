@@ -83,20 +83,20 @@ export default function AuthModal({ onAuthenticated, onSkip }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 bg-gray-950 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 bg-gray-50 dark:bg-gray-950 z-50 flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="text-center mb-8">
           <div className="text-5xl mb-3">💸</div>
-          <h1 className="text-white font-bold text-2xl tracking-tight">Финик</h1>
-          <p className="text-gray-400 text-sm mt-2 leading-relaxed">
+          <h1 className="text-gray-900 dark:text-white font-bold text-2xl tracking-tight">Финик</h1>
+          <p className="text-gray-600 dark:text-gray-400 text-sm mt-2 leading-relaxed">
             Войдите, чтобы данные синхронизировались<br />между телефоном и компьютером
           </p>
         </div>
 
-        <div className="bg-gray-800 rounded-2xl p-6 border border-gray-700/50">
+        <div className="bg-gray-200 dark:bg-gray-800 rounded-2xl p-6 border border-gray-300 dark:border-gray-700/50">
           {/* Toggle */}
-          <div className="flex bg-gray-700/60 rounded-xl p-1 mb-5">
+          <div className="flex bg-gray-300 dark:bg-gray-700/60 rounded-xl p-1 mb-5">
             {(['login', 'register'] as const).map(m => (
               <button
                 key={m}
@@ -104,7 +104,7 @@ export default function AuthModal({ onAuthenticated, onSkip }: Props) {
                 className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${
                   mode === m
                     ? 'bg-green-600 text-white shadow'
-                    : 'text-gray-400 hover:text-white'
+                    : 'text-gray-600 dark:text-gray-400 hover:text-white'
                 }`}
               >
                 {m === 'login' ? 'Войти' : 'Регистрация'}
@@ -120,7 +120,7 @@ export default function AuthModal({ onAuthenticated, onSkip }: Props) {
               onChange={e => setEmail(e.target.value)}
               placeholder="Эл. почта"
               autoComplete="email"
-              className="w-full bg-gray-700 text-white p-3.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 placeholder-gray-500 text-sm"
+              className="w-full bg-gray-300 dark:bg-gray-700 text-gray-900 dark:text-white p-3.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 placeholder-gray-500 text-sm"
               onKeyDown={e => e.key === 'Enter' && handleSubmit()}
             />
             <div className="relative">
@@ -130,13 +130,13 @@ export default function AuthModal({ onAuthenticated, onSkip }: Props) {
                 onChange={e => setPassword(e.target.value)}
                 placeholder="Пароль"
                 autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-                className="w-full bg-gray-700 text-white p-3.5 pr-12 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 placeholder-gray-500 text-sm"
+                className="w-full bg-gray-300 dark:bg-gray-700 text-gray-900 dark:text-white p-3.5 pr-12 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 placeholder-gray-500 text-sm"
                 onKeyDown={e => e.key === 'Enter' && handleSubmit()}
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(v => !v)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors text-lg select-none"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors text-lg select-none"
                 tabIndex={-1}
               >
                 {showPassword ? '🙈' : '👁'}
@@ -150,7 +150,7 @@ export default function AuthModal({ onAuthenticated, onSkip }: Props) {
                   onChange={e => setConfirmPassword(e.target.value)}
                   placeholder="Подтвердите пароль"
                   autoComplete="new-password"
-                  className="w-full bg-gray-700 text-white p-3.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 placeholder-gray-500 text-sm"
+                  className="w-full bg-gray-300 dark:bg-gray-700 text-gray-900 dark:text-white p-3.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 placeholder-gray-500 text-sm"
                   onKeyDown={e => e.key === 'Enter' && handleSubmit()}
                 />
                 <input
@@ -158,7 +158,7 @@ export default function AuthModal({ onAuthenticated, onSkip }: Props) {
                   value={inviteCode}
                   onChange={e => setInviteCode(e.target.value.toUpperCase())}
                   placeholder="Инвайт-код (FINO-XXXXXX)"
-                  className="w-full bg-gray-700 text-white p-3.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 placeholder-gray-500 text-sm tracking-widest"
+                  className="w-full bg-gray-300 dark:bg-gray-700 text-gray-900 dark:text-white p-3.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 placeholder-gray-500 text-sm tracking-widest"
                   onKeyDown={e => e.key === 'Enter' && handleSubmit()}
                 />
               </>
@@ -189,7 +189,7 @@ export default function AuthModal({ onAuthenticated, onSkip }: Props) {
         {/* Skip */}
         <button
           onClick={onSkip}
-          className="w-full mt-4 py-3 text-gray-600 hover:text-gray-400 text-xs transition-colors"
+          className="w-full mt-4 py-3 text-gray-400 dark:text-gray-600 hover:text-gray-600 dark:hover:text-gray-400 text-xs transition-colors"
         >
           Продолжить без входа (данные только на этом устройстве)
         </button>

@@ -114,9 +114,9 @@ export default function AnnualPlanView({
     <div>
       {/* Year selector */}
       <div className="flex items-center justify-between mb-3">
-        <button onClick={() => setSelYear(y => y - 1)} className="w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 text-white flex items-center justify-center">←</button>
-        <span className="text-white font-bold">{selYear}</span>
-        <button onClick={() => setSelYear(y => y + 1)} className="w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 text-white flex items-center justify-center">→</button>
+        <button onClick={() => setSelYear(y => y - 1)} className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 text-gray-900 dark:text-white flex items-center justify-center">←</button>
+        <span className="text-gray-900 dark:text-white font-bold">{selYear}</span>
+        <button onClick={() => setSelYear(y => y + 1)} className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 text-gray-900 dark:text-white flex items-center justify-center">→</button>
       </div>
 
       {/* Month pills */}
@@ -135,8 +135,8 @@ export default function AnnualPlanView({
                   : hasPlan
                   ? 'bg-green-900/60 text-green-300 hover:bg-green-800/70'
                   : isCurrent
-                  ? 'bg-gray-700 text-white ring-1 ring-green-500/50'
-                  : 'bg-gray-800 text-gray-500 hover:bg-gray-700 hover:text-gray-300'
+                  ? 'bg-gray-300 dark:bg-gray-700 text-white ring-1 ring-green-500/50'
+                  : 'bg-gray-200 dark:bg-gray-800 text-gray-500 hover:bg-gray-300 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-300'
               }`}
             >
               {name}
@@ -149,7 +149,7 @@ export default function AnnualPlanView({
       <div className="flex gap-2 mb-4">
         <button
           onClick={handleCopyFromPrevious}
-          className="flex-1 py-2.5 px-3 bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white text-xs rounded-xl transition-colors border border-gray-700 flex items-center justify-center gap-1.5"
+          className="flex-1 py-2.5 px-3 bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white text-xs rounded-xl transition-colors border border-gray-300 dark:border-gray-700 flex items-center justify-center gap-1.5"
         >
           📋 С предыдущего
         </button>
@@ -166,24 +166,24 @@ export default function AnnualPlanView({
       {/* Selected month title */}
       <div className="flex items-center gap-2 mb-3">
         <span className="text-yellow-400 text-sm font-bold">📅 {MONTHS_RU[selMonth]} {selYear}</span>
-        {!monthHasPlan(selYear, selMonth) && <span className="text-gray-600 text-xs">— план не задан</span>}
+        {!monthHasPlan(selYear, selMonth) && <span className="text-gray-400 dark:text-gray-600 text-xs">— план не задан</span>}
       </div>
 
       {/* Summary */}
       <div className="grid grid-cols-3 gap-2 mb-4">
         <div className="bg-green-900/20 border border-green-800/40 rounded-xl p-2.5 text-center">
           <div className="text-green-400 text-xs mb-1">Доходы</div>
-          <div className="text-white font-bold text-xs">{fmt(totalIncome)}</div>
+          <div className="text-gray-900 dark:text-white font-bold text-xs">{fmt(totalIncome)}</div>
         </div>
         <div className="bg-orange-900/20 border border-orange-800/40 rounded-xl p-2.5 text-center">
           <div className="text-orange-400 text-xs mb-1">Расходы</div>
-          <div className="text-white font-bold text-xs">{fmt(totalExpense)}</div>
+          <div className="text-gray-900 dark:text-white font-bold text-xs">{fmt(totalExpense)}</div>
         </div>
         <div className={`rounded-xl p-2.5 text-center border ${plannedSavings >= 0 ? 'bg-blue-900/20 border-blue-800/40' : 'bg-red-900/20 border-red-800/40'}`}>
           <div className={`text-xs mb-1 ${plannedSavings >= 0 ? 'text-blue-400' : 'text-red-400'}`}>
             {plannedSavings >= 0 ? 'Остаток' : 'Дефицит'}
           </div>
-          <div className="text-white font-bold text-xs">{fmt(Math.abs(plannedSavings))}</div>
+          <div className="text-gray-900 dark:text-white font-bold text-xs">{fmt(Math.abs(plannedSavings))}</div>
         </div>
       </div>
 
@@ -213,7 +213,7 @@ export default function AnnualPlanView({
         onDelete={id => setDeleteConfirm(id)} onAdd={() => setEditCatModal({ group: 'current' })}
       />
 
-      <p className="text-center text-gray-600 text-xs mt-1 mb-4">
+      <p className="text-center text-gray-400 dark:text-gray-600 text-xs mt-1 mb-4">
         ✏ — редактировать категорию · 📝 — добавить заметку
       </p>
 
@@ -222,11 +222,11 @@ export default function AnnualPlanView({
         const cat = categories.find(c => c.id === deleteConfirm)
         return (
           <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
-            <div className="w-full max-w-xs bg-gray-900 rounded-2xl border border-gray-700 p-5">
-              <div className="text-white font-bold mb-2">Удалить категорию?</div>
-              <div className="text-gray-400 text-sm mb-4">{cat?.icon} {cat?.name}</div>
+            <div className="w-full max-w-xs bg-gray-100 dark:bg-gray-900 rounded-2xl border border-gray-300 dark:border-gray-700 p-5">
+              <div className="text-gray-900 dark:text-white font-bold mb-2">Удалить категорию?</div>
+              <div className="text-gray-600 dark:text-gray-400 text-sm mb-4">{cat?.icon} {cat?.name}</div>
               <div className="flex gap-2">
-                <button onClick={() => setDeleteConfirm(null)} className="flex-1 py-2.5 rounded-xl bg-gray-800 text-gray-300 text-sm">Отмена</button>
+                <button onClick={() => setDeleteConfirm(null)} className="flex-1 py-2.5 rounded-xl bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-sm">Отмена</button>
                 <button onClick={() => handleDeleteCategory(deleteConfirm)} className="flex-1 py-2.5 rounded-xl bg-red-700 hover:bg-red-600 text-white text-sm font-bold">Удалить</button>
               </div>
             </div>
@@ -273,11 +273,11 @@ function PlanSection({
           const hasNote = !!(notes[cat.id]?.trim())
           const isExpanded = expandedNote === cat.id
           return (
-            <div key={cat.id} className="bg-gray-800 rounded-xl overflow-hidden">
+            <div key={cat.id} className="bg-gray-200 dark:bg-gray-800 rounded-xl overflow-hidden">
               <div className="px-3 py-2 flex items-center gap-2">
                 <span className="text-lg flex-shrink-0">{cat.icon}</span>
                 <div className="flex-1 min-w-0">
-                  <div className="text-white text-sm truncate">{cat.name}</div>
+                  <div className="text-gray-900 dark:text-white text-sm truncate">{cat.name}</div>
                   {hasNote && !isExpanded && (
                     <div className="text-gray-500 text-xs truncate">{notes[cat.id]}</div>
                   )}
@@ -288,18 +288,18 @@ function PlanSection({
                   onChange={v => onAmountChange(cat.id, v)}
                   onSave={onSave}
                 />
-                <span className="text-gray-600 text-xs w-3">{CURRENCY}</span>
+                <span className="text-gray-400 dark:text-gray-600 text-xs w-3">{CURRENCY}</span>
                 <button
                   onClick={() => onToggleNote(cat.id)}
                   className={`w-7 h-7 rounded-lg flex items-center justify-center text-sm transition-colors flex-shrink-0 ${
-                    isExpanded ? 'bg-yellow-700/50 text-yellow-300' : hasNote ? 'bg-yellow-900/30 text-yellow-500 hover:text-yellow-300' : 'bg-gray-700 text-gray-500 hover:text-gray-300'
+                    isExpanded ? 'bg-yellow-700/50 text-yellow-300' : hasNote ? 'bg-yellow-900/30 text-yellow-500 hover:text-yellow-300' : 'bg-gray-300 dark:bg-gray-700 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
                   }`}
                   title="Заметка"
                 >
                   📝
                 </button>
-                <button onClick={() => onEdit(cat)} className="w-7 h-7 rounded-lg bg-gray-700 hover:bg-blue-800/50 text-gray-400 hover:text-blue-300 flex items-center justify-center text-sm transition-colors flex-shrink-0" title="Редактировать">✏</button>
-                <button onClick={() => onDelete(cat.id)} className="w-7 h-7 rounded-lg bg-gray-700 hover:bg-red-900/50 text-gray-500 hover:text-red-400 flex items-center justify-center text-sm transition-colors flex-shrink-0" title="Удалить">×</button>
+                <button onClick={() => onEdit(cat)} className="w-7 h-7 rounded-lg bg-gray-300 dark:bg-gray-700 hover:bg-blue-800/50 text-gray-600 dark:text-gray-400 hover:text-blue-300 flex items-center justify-center text-sm transition-colors flex-shrink-0" title="Редактировать">✏</button>
+                <button onClick={() => onDelete(cat.id)} className="w-7 h-7 rounded-lg bg-gray-300 dark:bg-gray-700 hover:bg-red-900/50 text-gray-500 hover:text-red-400 flex items-center justify-center text-sm transition-colors flex-shrink-0" title="Удалить">×</button>
               </div>
               {isExpanded && (
                 <div className="px-3 pb-2.5">
@@ -309,7 +309,7 @@ function PlanSection({
                     onChange={e => onNoteChange(cat.id, e.target.value)}
                     placeholder="Добавьте заметку..."
                     autoFocus
-                    className="w-full bg-gray-700 text-white text-sm p-2 rounded-lg focus:outline-none focus:ring-1 focus:ring-yellow-500 placeholder-gray-600"
+                    className="w-full bg-gray-300 dark:bg-gray-700 text-gray-900 dark:text-white text-sm p-2 rounded-lg focus:outline-none focus:ring-1 focus:ring-yellow-500 placeholder-gray-400 dark:placeholder-gray-600"
                     onKeyDown={e => e.key === 'Enter' && onToggleNote(cat.id)}
                   />
                 </div>
@@ -382,7 +382,7 @@ function PlanInput({ value, accentColor, onChange, onSave }: {
       onBlur={handleBlur}
       onChange={handleChange}
       onKeyDown={handleKeyDown}
-      className={`w-24 bg-gray-700 text-white text-right px-2 py-1.5 rounded-lg focus:outline-none focus:ring-2 text-sm ${ringColor[accentColor]}`}
+      className={`w-24 bg-gray-300 dark:bg-gray-700 text-gray-900 dark:text-white text-right px-2 py-1.5 rounded-lg focus:outline-none focus:ring-2 text-sm ${ringColor[accentColor]}`}
     />
   )
 }

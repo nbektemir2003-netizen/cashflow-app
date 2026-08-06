@@ -8,9 +8,15 @@
   }
 
   body {
+    color: #111827;
+    background-color: #f9fafb;
+    -webkit-font-smoothing: antialiased;
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+
+  .dark body {
     color: #f9fafb;
     background-color: #030712;
-    -webkit-font-smoothing: antialiased;
   }
 
   input[type='number']::-webkit-outer-spin-button,
@@ -24,6 +30,11 @@
   }
 
   select option {
+    background-color: #f3f4f6;
+    color: #111827;
+  }
+
+  .dark select option {
     background-color: #1f2937;
     color: #f9fafb;
   }

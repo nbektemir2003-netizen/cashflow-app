@@ -14,10 +14,24 @@ export const viewport: Viewport = {
   themeColor: '#030712',
 }
 
+const THEME_INIT_SCRIPT = `
+(function() {
+  try {
+    var theme = localStorage.getItem('theme');
+    if (theme !== 'light') document.documentElement.classList.add('dark');
+  } catch (e) {
+    document.documentElement.classList.add('dark');
+  }
+})();
+`
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ru">
-      <body className="bg-gray-950 antialiased">{children}</body>
+    <html lang="ru" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+      </head>
+      <body className="bg-gray-50 dark:bg-gray-950 antialiased" suppressHydrationWarning>{children}</body>
     </html>
   )
 }

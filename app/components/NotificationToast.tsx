@@ -22,11 +22,11 @@ export default function NotificationToast({ notification, onDismiss }: Props) {
             <span className="text-red-400 text-sm">⚠️</span>
             <span className="text-red-300 font-semibold text-sm truncate">{notification.categoryName}</span>
           </div>
-          <div className="text-white text-sm">{notification.message}</div>
+          <div className="text-gray-900 dark:text-white text-sm">{notification.message}</div>
         </div>
         <button
           onClick={() => onDismiss(notification.id)}
-          className="text-red-500 hover:text-white flex-shrink-0 transition-colors"
+          className="text-red-500 hover:text-gray-900 dark:hover:text-white flex-shrink-0 transition-colors"
         >
           ✕
         </button>

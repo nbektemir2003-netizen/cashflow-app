@@ -61,19 +61,19 @@ export default function ReportView({ monthlyPlans, transactions, currentYear, cu
   return (
     <div>
       <div className="mb-5">
-        <h2 className="text-white font-bold text-lg">Отчёт</h2>
+        <h2 className="text-gray-900 dark:text-white font-bold text-lg">Отчёт</h2>
       </div>
 
       {/* Period selector */}
-      <div className="bg-gray-800 rounded-xl p-4 mb-5">
-        <div className="text-gray-400 text-sm font-medium mb-3">Период</div>
+      <div className="bg-gray-200 dark:bg-gray-800 rounded-xl p-4 mb-5">
+        <div className="text-gray-600 dark:text-gray-400 text-sm font-medium mb-3">Период</div>
         <div className="grid grid-cols-2 gap-3 mb-3">
           <div>
             <label className="text-xs text-gray-500 mb-1.5 block">С месяца</label>
             <select
               value={fromMonth}
               onChange={e => { const v = Number(e.target.value); setFromMonth(v); if (v > toMonth) setToMonth(v) }}
-              className="w-full bg-gray-700 text-white p-2.5 rounded-lg text-sm focus:outline-none"
+              className="w-full bg-gray-300 dark:bg-gray-700 text-gray-900 dark:text-white p-2.5 rounded-lg text-sm focus:outline-none"
             >
               {MONTHS_RU.map((m, i) => <option key={i} value={i}>{m}</option>)}
             </select>
@@ -83,7 +83,7 @@ export default function ReportView({ monthlyPlans, transactions, currentYear, cu
             <select
               value={toMonth}
               onChange={e => { const v = Number(e.target.value); setToMonth(v); if (v < fromMonth) setFromMonth(v) }}
-              className="w-full bg-gray-700 text-white p-2.5 rounded-lg text-sm focus:outline-none"
+              className="w-full bg-gray-300 dark:bg-gray-700 text-gray-900 dark:text-white p-2.5 rounded-lg text-sm focus:outline-none"
             >
               {MONTHS_RU.map((m, i) => <option key={i} value={i}>{m}</option>)}
             </select>
@@ -96,7 +96,7 @@ export default function ReportView({ monthlyPlans, transactions, currentYear, cu
           <div className="flex gap-1.5">
             {[currentYear - 1, currentYear].map(y => (
               <button key={y} onClick={() => setYear(y)}
-                className={`px-2.5 py-1 rounded-lg text-xs transition-colors ${year === y ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-400 hover:bg-gray-600'}`}>
+                className={`px-2.5 py-1 rounded-lg text-xs transition-colors ${year === y ? 'bg-blue-600 text-white' : 'bg-gray-300 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-400 dark:hover:bg-gray-600'}`}>
                 {y}
               </button>
             ))}
@@ -108,19 +108,19 @@ export default function ReportView({ monthlyPlans, transactions, currentYear, cu
       <div className="grid grid-cols-3 gap-3 mb-6">
         <div className="bg-green-900/20 border border-green-800/40 rounded-xl p-3 text-center">
           <div className="text-green-400 text-xs mb-1">Доходы</div>
-          <div className="text-white font-bold text-xs">{fmt(totalIncomeActual)}</div>
-          <div className="text-gray-600 text-xs mt-0.5">план {fmt(totalIncomePlanned)}</div>
+          <div className="text-gray-900 dark:text-white font-bold text-xs">{fmt(totalIncomeActual)}</div>
+          <div className="text-gray-400 dark:text-gray-600 text-xs mt-0.5">план {fmt(totalIncomePlanned)}</div>
         </div>
         <div className="bg-red-900/20 border border-red-800/40 rounded-xl p-3 text-center">
           <div className="text-red-400 text-xs mb-1">Расходы</div>
-          <div className="text-white font-bold text-xs">{fmt(totalExpenseActual)}</div>
-          <div className="text-gray-600 text-xs mt-0.5">план {fmt(totalExpensePlanned)}</div>
+          <div className="text-gray-900 dark:text-white font-bold text-xs">{fmt(totalExpenseActual)}</div>
+          <div className="text-gray-400 dark:text-gray-600 text-xs mt-0.5">план {fmt(totalExpensePlanned)}</div>
         </div>
         <div className={`rounded-xl p-3 text-center border ${savings >= 0 ? 'bg-green-900/20 border-green-800/40' : 'bg-red-900/20 border-red-800/40'}`}>
           <div className={`text-xs mb-1 ${savings >= 0 ? 'text-green-400' : 'text-red-400'}`}>
             {savings >= 0 ? 'Сэкономлено' : 'Перерасход'}
           </div>
-          <div className="text-white font-bold text-xs">{fmt(Math.abs(savings))}</div>
+          <div className="text-gray-900 dark:text-white font-bold text-xs">{fmt(Math.abs(savings))}</div>
         </div>
       </div>
 
@@ -138,7 +138,7 @@ function ReportSection({ title, titleColor, cats }: { title: string; titleColor:
     <div className="mb-5">
       <div className="flex items-center gap-2 mb-3">
         <span className={`${titleColor} text-xs font-bold`}>{title}</span>
-        <div className="flex-1 h-px bg-gray-700/50" />
+        <div className="flex-1 h-px bg-gray-300 dark:bg-gray-700/50" />
       </div>
       <div className="space-y-2">
         {visible.map(cat => {
@@ -147,22 +147,22 @@ function ReportSection({ title, titleColor, cats }: { title: string; titleColor:
           const showBar = cat.group === 'income' ? cat.actual > 0 || cat.planned > 0 : cat.planned > 0
           const barBg = cat.group === 'income' ? 'bg-green-500' : pct >= 100 ? 'bg-red-500' : cat.group === 'mandatory' ? 'bg-orange-500' : 'bg-red-500'
           return (
-            <div key={cat.id} className="bg-gray-800 rounded-xl p-3">
+            <div key={cat.id} className="bg-gray-200 dark:bg-gray-800 rounded-xl p-3">
               <div className="flex items-center gap-3">
                 <span className="text-xl flex-shrink-0">{cat.icon}</span>
                 <div className="flex-1 min-w-0">
                   <div className="flex justify-between items-center gap-2">
-                    <span className="text-white text-sm font-medium truncate">{cat.name}</span>
+                    <span className="text-gray-900 dark:text-white text-sm font-medium truncate">{cat.name}</span>
                     <span className={`text-sm font-semibold flex-shrink-0 ${cat.planned === 0 ? 'text-gray-500' : isPositive ? 'text-green-400' : 'text-red-400'}`}>
                       {cat.planned === 0 ? '—' : (isPositive ? '+' : '') + fmt(cat.diff)}
                     </span>
                   </div>
                   <div className="flex justify-between text-xs text-gray-500 mt-0.5">
-                    <span>факт: <span className="text-gray-300">{fmt(cat.actual)}</span></span>
+                    <span>факт: <span className="text-gray-700 dark:text-gray-300">{fmt(cat.actual)}</span></span>
                     {cat.planned > 0 && <span>план: {fmt(cat.planned)}</span>}
                   </div>
                   {showBar && (
-                    <div className="mt-2 w-full bg-gray-700 rounded-full h-1">
+                    <div className="mt-2 w-full bg-gray-300 dark:bg-gray-700 rounded-full h-1">
                       <div className={`h-1 rounded-full ${barBg}`} style={{ width: `${pct}%` }} />
                     </div>
                   )}

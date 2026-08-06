@@ -50,6 +50,18 @@ export default function Home() {
   const [userEmail, setUserEmail] = useState<string | null>(null)
   const [syncing, setSyncing] = useState(false)
   const [showOnboarding, setShowOnboarding] = useState(false)
+  const [isLight, setIsLight] = useState(false)
+
+  useEffect(() => {
+    setIsLight(!document.documentElement.classList.contains('dark'))
+  }, [])
+
+  const toggleTheme = () => {
+    const nextLight = !isLight
+    setIsLight(nextLight)
+    document.documentElement.classList.toggle('dark', !nextLight)
+    localStorage.setItem('theme', nextLight ? 'light' : 'dark')
+  }
 
   const [currentYear, setCurrentYear] = useState(now.getFullYear())
   const [currentMonth, setCurrentMonth] = useState(now.getMonth())
@@ -339,7 +351,7 @@ export default function Home() {
 
   if (appMode === 'checking') {
     return (
-      <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center gap-3">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex flex-col items-center justify-center gap-3">
         <div className="text-4xl animate-pulse">💸</div>
         <div className="text-gray-500 text-sm">Загрузка...</div>
       </div>
@@ -357,27 +369,34 @@ export default function Home() {
   )
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white flex flex-col">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-white flex flex-col">
       {/* Header */}
-      <header className="bg-gray-900/95 border-b border-gray-800 backdrop-blur-sm sticky top-0 z-20">
+      <header className="bg-gray-100 dark:bg-gray-900/95 border-b border-gray-200 dark:border-gray-800 backdrop-blur-sm sticky top-0 z-20">
         <div className="max-w-lg mx-auto px-4 py-2.5 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-xl">💸</span>
-            <span className="text-white font-bold text-lg tracking-tight">Финик</span>
+            <span className="text-gray-900 dark:text-white font-bold text-lg tracking-tight">Финик</span>
             {syncing && <span className="text-xs text-blue-400 animate-pulse">↑ синхр.</span>}
           </div>
           <div className="flex items-center gap-3">
+            <button
+              onClick={toggleTheme}
+              title={isLight ? 'Тёмная тема' : 'Светлая тема'}
+              className="w-8 h-8 rounded-full bg-gray-300 dark:bg-gray-700 hover:bg-gray-400 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white flex items-center justify-center text-sm transition-colors"
+            >
+              {isLight ? '🌙' : '☀️'}
+            </button>
             {lastAction && (
               <button
                 onClick={handleUndo}
                 title="Отменить последнее действие"
-                className="w-8 h-8 rounded-full bg-gray-700 hover:bg-yellow-800/50 text-gray-300 hover:text-yellow-300 flex items-center justify-center text-sm transition-colors"
+                className="w-8 h-8 rounded-full bg-gray-300 dark:bg-gray-700 hover:bg-yellow-800/50 text-gray-700 dark:text-gray-300 hover:text-yellow-300 flex items-center justify-center text-sm transition-colors"
               >
                 ↩
               </button>
             )}
             <div className="text-right">
-              <div className="text-gray-400 text-xs">{MONTHS_RU[currentMonth]} {currentYear}</div>
+              <div className="text-gray-600 dark:text-gray-400 text-xs">{MONTHS_RU[currentMonth]} {currentYear}</div>
               <div className={`text-xs font-medium ${currentOpeningBalance >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                 {fmt(currentOpeningBalance)}
               </div>
@@ -394,7 +413,7 @@ export default function Home() {
               <button
                 onClick={() => setAppMode('auth')}
                 title="Войти для синхронизации"
-                className="w-8 h-8 rounded-full bg-gray-700 hover:bg-gray-600 text-gray-400 hover:text-white flex items-center justify-center text-sm transition-colors"
+                className="w-8 h-8 rounded-full bg-gray-300 dark:bg-gray-700 hover:bg-gray-400 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white flex items-center justify-center text-sm transition-colors"
               >
                 ↗
               </button>
@@ -412,7 +431,7 @@ export default function Home() {
         )}
 
         {/* Tabs */}
-        <div className="max-w-lg mx-auto flex border-t border-gray-800">
+        <div className="max-w-lg mx-auto flex border-t border-gray-200 dark:border-gray-800">
           {TABS.map(tab => (
             <button
               key={tab.key}
@@ -420,7 +439,7 @@ export default function Home() {
               className={`flex-1 py-2.5 text-xs font-medium transition-all flex flex-col items-center gap-0.5 ${
                 activeTab === tab.key
                   ? 'text-green-400 border-b-2 border-green-400'
-                  : 'text-gray-500 hover:text-gray-300 border-b-2 border-transparent'
+                  : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 border-b-2 border-transparent'
               }`}
             >
               <span className="text-base">{tab.icon}</span>

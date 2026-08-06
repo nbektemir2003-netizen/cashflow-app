@@ -38,10 +38,10 @@ export default function TransferModal({ accounts, onSave, onClose }: Props) {
 
   return (
     <div className="fixed inset-0 bg-black/75 z-50 flex items-end justify-center" onClick={onClose}>
-      <div className="bg-gray-900 rounded-t-2xl w-full max-w-md border-t border-gray-700 p-5" onClick={e => e.stopPropagation()}>
+      <div className="bg-gray-100 dark:bg-gray-900 rounded-t-2xl w-full max-w-md border-t border-gray-300 dark:border-gray-700 p-5" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-5">
-          <div className="text-white font-bold text-base">↔ Перевод между счетами</div>
-          <button onClick={onClose} className="text-gray-500 hover:text-white w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-700">✕</button>
+          <div className="text-gray-900 dark:text-white font-bold text-base">↔ Перевод между счетами</div>
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-900 dark:hover:text-white w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-300 dark:hover:bg-gray-700">✕</button>
         </div>
 
         {/* From → To */}
@@ -51,7 +51,7 @@ export default function TransferModal({ accounts, onSave, onClose }: Props) {
             <div className="space-y-1.5">
               {accounts.map(a => (
                 <button key={a.id} onClick={() => setFromId(a.id)}
-                  className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl border text-sm transition-all ${fromId === a.id ? 'border-blue-500 bg-blue-900/30 text-white' : 'border-gray-700 text-gray-400 hover:border-gray-500'}`}>
+                  className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl border text-sm transition-all ${fromId === a.id ? 'border-blue-500 bg-blue-900/30 text-white' : 'border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-500'}`}>
                   <span>{a.icon}</span><span>{a.name}</span>
                 </button>
               ))}
@@ -63,7 +63,7 @@ export default function TransferModal({ accounts, onSave, onClose }: Props) {
             <div className="space-y-1.5">
               {accounts.map(a => (
                 <button key={a.id} onClick={() => setToId(a.id)}
-                  className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl border text-sm transition-all ${toId === a.id ? 'border-green-500 bg-green-900/30 text-white' : 'border-gray-700 text-gray-400 hover:border-gray-500'}`}>
+                  className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl border text-sm transition-all ${toId === a.id ? 'border-green-500 bg-green-900/30 text-white' : 'border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-500'}`}>
                   <span>{a.icon}</span><span>{a.name}</span>
                 </button>
               ))}
@@ -75,10 +75,10 @@ export default function TransferModal({ accounts, onSave, onClose }: Props) {
 
         {/* Preview */}
         {fromAcc && toAcc && fromId !== toId && (
-          <div className="bg-gray-800 rounded-xl p-3 mb-4 flex items-center justify-center gap-2 text-sm">
-            <span>{fromAcc.icon}</span><span className="text-white">{fromAcc.name}</span>
+          <div className="bg-gray-200 dark:bg-gray-800 rounded-xl p-3 mb-4 flex items-center justify-center gap-2 text-sm">
+            <span>{fromAcc.icon}</span><span className="text-gray-900 dark:text-white">{fromAcc.name}</span>
             <span className="text-gray-500">→</span>
-            <span>{toAcc.icon}</span><span className="text-white">{toAcc.name}</span>
+            <span>{toAcc.icon}</span><span className="text-gray-900 dark:text-white">{toAcc.name}</span>
           </div>
         )}
 
@@ -96,14 +96,14 @@ export default function TransferModal({ accounts, onSave, onClose }: Props) {
               setError('')
             }}
             placeholder="0" autoFocus
-            className="w-full bg-gray-800 text-white text-2xl font-bold p-3 pr-12 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-white text-2xl font-bold p-3 pr-12 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
             onKeyDown={e => e.key === 'Enter' && handleSave()} />
-          <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 text-lg">{CURRENCY}</span>
+          <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-600 dark:text-gray-400 text-lg">{CURRENCY}</span>
         </div>
         <div className="flex flex-wrap gap-1.5 mb-3">
           {PRESETS.map(p => (
             <button key={p} onClick={() => setRawAmount(String(p))}
-              className={`px-2.5 py-1 rounded-lg text-xs border transition-colors ${rawAmount === String(p) ? 'border-blue-500 text-blue-400 bg-blue-900/20' : 'border-gray-700 text-gray-400 bg-gray-800 hover:bg-gray-700'}`}>
+              className={`px-2.5 py-1 rounded-lg text-xs border transition-colors ${rawAmount === String(p) ? 'border-blue-500 text-blue-400 bg-blue-900/20' : 'border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-400 bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700'}`}>
               {p.toLocaleString('ru-RU')}
             </button>
           ))}
@@ -111,13 +111,13 @@ export default function TransferModal({ accounts, onSave, onClose }: Props) {
 
         <input type="text" value={note} onChange={e => setNote(e.target.value)}
           placeholder="Комментарий (необязательно)"
-          className="w-full bg-gray-800 text-white p-3 rounded-xl focus:outline-none focus:ring-1 focus:ring-gray-500 placeholder-gray-600 text-sm mb-3"
+          className="w-full bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-white p-3 rounded-xl focus:outline-none focus:ring-1 focus:ring-gray-500 placeholder-gray-400 dark:placeholder-gray-600 text-sm mb-3"
           onKeyDown={e => e.key === 'Enter' && handleSave()} />
 
         {error && <div className="text-red-400 text-xs mb-3">⚠ {error}</div>}
 
         <div className="flex gap-2">
-          <button onClick={onClose} className="flex-1 py-3 rounded-xl bg-gray-800 text-gray-300 text-sm">Отмена</button>
+          <button onClick={onClose} className="flex-1 py-3 rounded-xl bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-sm">Отмена</button>
           <button onClick={handleSave} className="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm">Перевести</button>
         </div>
       </div>

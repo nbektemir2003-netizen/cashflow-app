@@ -14,8 +14,8 @@ interface Props {
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null
   return (
-    <div className="bg-gray-900 border border-gray-700 rounded-xl p-3 text-sm shadow-xl">
-      <div className="text-gray-300 font-medium mb-2">{label}</div>
+    <div className="bg-gray-100 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-xl p-3 text-sm shadow-xl">
+      <div className="text-gray-700 dark:text-gray-300 font-medium mb-2">{label}</div>
       {payload.map((p: any) => (
         <div key={p.dataKey} className="flex justify-between gap-4" style={{ color: p.fill }}>
           <span>{p.dataKey}</span>
@@ -75,33 +75,33 @@ export default function HistoryView({ monthlyPlans, transactions, categories = D
   return (
     <div>
       <div className="mb-5">
-        <h2 className="text-white font-bold text-lg mb-1">История {currentYear}</h2>
-        <p className="text-gray-400 text-sm">Доходы и расходы по месяцам</p>
+        <h2 className="text-gray-900 dark:text-white font-bold text-lg mb-1">История {currentYear}</h2>
+        <p className="text-gray-600 dark:text-gray-400 text-sm">Доходы и расходы по месяцам</p>
       </div>
 
       {/* Year totals */}
       <div className="grid grid-cols-3 gap-3 mb-5">
-        <div className="bg-gray-800 rounded-xl p-3 text-center">
+        <div className="bg-gray-200 dark:bg-gray-800 rounded-xl p-3 text-center">
           <div className="text-green-400 text-xs mb-1">Доходы</div>
-          <div className="text-white font-bold text-xs">{fmt(totalIncome)}</div>
+          <div className="text-gray-900 dark:text-white font-bold text-xs">{fmt(totalIncome)}</div>
         </div>
-        <div className="bg-gray-800 rounded-xl p-3 text-center">
+        <div className="bg-gray-200 dark:bg-gray-800 rounded-xl p-3 text-center">
           <div className="text-red-400 text-xs mb-1">Расходы</div>
-          <div className="text-white font-bold text-xs">{fmt(totalExpense)}</div>
+          <div className="text-gray-900 dark:text-white font-bold text-xs">{fmt(totalExpense)}</div>
         </div>
-        <div className="bg-gray-800 rounded-xl p-3 text-center">
+        <div className="bg-gray-200 dark:bg-gray-800 rounded-xl p-3 text-center">
           <div className={`text-xs mb-1 ${totalSavings >= 0 ? 'text-blue-400' : 'text-red-400'}`}>
             {totalSavings >= 0 ? 'Накоплено' : 'Перерасход'}
           </div>
-          <div className="text-white font-bold text-xs">{fmt(Math.abs(totalSavings))}</div>
+          <div className="text-gray-900 dark:text-white font-bold text-xs">{fmt(Math.abs(totalSavings))}</div>
         </div>
       </div>
 
       {/* Chart */}
-      <div className="bg-gray-800 rounded-xl p-4 mb-5">
-        <div className="text-gray-400 text-xs mb-3">Доходы и расходы по месяцам</div>
+      <div className="bg-gray-200 dark:bg-gray-800 rounded-xl p-4 mb-5">
+        <div className="text-gray-600 dark:text-gray-400 text-xs mb-3">Доходы и расходы по месяцам</div>
         {!hasAnyData ? (
-          <div className="h-48 flex flex-col items-center justify-center gap-2 text-gray-600">
+          <div className="h-48 flex flex-col items-center justify-center gap-2 text-gray-400 dark:text-gray-600">
             <div className="text-3xl">📊</div>
             <div className="text-sm">Нет данных — добавьте транзакции</div>
           </div>
@@ -120,19 +120,19 @@ export default function HistoryView({ monthlyPlans, transactions, categories = D
       </div>
 
       {/* Monthly table */}
-      <div className="bg-gray-800 rounded-xl overflow-hidden">
-        <div className="grid grid-cols-4 px-4 py-2.5 border-b border-gray-700">
+      <div className="bg-gray-200 dark:bg-gray-800 rounded-xl overflow-hidden">
+        <div className="grid grid-cols-4 px-4 py-2.5 border-b border-gray-300 dark:border-gray-700">
           <div className="text-gray-500 text-xs font-medium">Месяц</div>
           <div className="text-gray-500 text-xs font-medium text-right">Доходы</div>
           <div className="text-gray-500 text-xs font-medium text-right">Расходы</div>
           <div className="text-gray-500 text-xs font-medium text-right">Итог</div>
         </div>
         {visibleData.map((m, i) => (
-          <div key={i} className={`grid grid-cols-4 px-4 py-3 border-b border-gray-700/40 last:border-0 ${!m.hasTx ? 'opacity-35' : ''}`}>
-            <div className="text-white text-sm">{m.fullMonth}</div>
+          <div key={i} className={`grid grid-cols-4 px-4 py-3 border-b border-gray-300 dark:border-gray-700/40 last:border-0 ${!m.hasTx ? 'opacity-35' : ''}`}>
+            <div className="text-gray-900 dark:text-white text-sm">{m.fullMonth}</div>
             <div className="text-green-400 text-sm text-right">{m['Доходы'] > 0 ? fmt(m['Доходы']) : '—'}</div>
             <div className="text-red-400 text-sm text-right">{m['Расходы'] > 0 ? fmt(m['Расходы']) : '—'}</div>
-            <div className={`text-sm text-right font-medium ${!m.hasTx ? 'text-gray-600' : m.savings >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+            <div className={`text-sm text-right font-medium ${!m.hasTx ? 'text-gray-400 dark:text-gray-600' : m.savings >= 0 ? 'text-green-400' : 'text-red-400'}`}>
               {!m.hasTx ? '—' : fmt(m.savings)}
             </div>
           </div>
