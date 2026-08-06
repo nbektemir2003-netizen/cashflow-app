@@ -11,7 +11,7 @@ import {
   getAccounts, saveAccounts,
   getTransfers, saveTransfers,
   getRecurring, saveRecurring,
-  DEFAULT_ACCOUNTS, DEPOSIT_ACCOUNT_ID,
+  DEFAULT_ACCOUNTS, DEPOSIT_ACCOUNT_ID, mergeWithDefaultCategories,
   MonthlyPlans, monthKey,
 } from './lib/storage'
 import {
@@ -129,13 +129,13 @@ export default function Home() {
       ? (await cloudUploadAllTransactions(uid, localTx), localTx)
       : []
     const finalBalances = cloudBalances ?? localBalances
-    const finalCats = cloudCats ?? localCats
+    const finalCats = mergeWithDefaultCategories(cloudCats ?? localCats)
     const finalAccounts = cloudAccounts ?? localAccounts
     const finalTransfers = cloudTransfers ?? localTransfers
     const finalRecurring = cloudRecurring ?? localRecurring
 
     if (!cloudPlans && Object.keys(localPlans).length > 0) await cloudSavePlan(uid, localPlans)
-    if (!cloudCats) await cloudSaveCategories(uid, finalCats)
+    if (!cloudCats || finalCats.length !== cloudCats.length) await cloudSaveCategories(uid, finalCats)
     if (!cloudAccounts) await cloudSaveAccounts(uid, finalAccounts)
     if (!cloudRecurring) await cloudSaveRecurring(uid, finalRecurring)
 

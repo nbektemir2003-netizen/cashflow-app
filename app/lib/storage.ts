@@ -89,11 +89,22 @@ export function monthKey(year: number, month: number): string {
   return `${year}-${month}`
 }
 
+// Пользователи, у которых категории уже сохранены (локально или в облаке),
+// не получают новые пункты из DEFAULT_CATEGORIES автоматически — их список
+// "заморожен" на момент первого сохранения. Эта функция дополняет сохранённый
+// список недостающими стандартными категориями, не трогая пользовательские правки.
+export function mergeWithDefaultCategories(categories: Category[]): Category[] {
+  const existingIds = new Set(categories.map(c => c.id))
+  const missing = DEFAULT_CATEGORIES.filter(c => !existingIds.has(c.id))
+  return missing.length > 0 ? [...categories, ...missing] : categories
+}
+
 export function getStoredCategories(): Category[] {
   if (typeof window === 'undefined') return DEFAULT_CATEGORIES
   try {
     const data = localStorage.getItem(CATEGORIES_KEY)
-    return data ? JSON.parse(data) : DEFAULT_CATEGORIES
+    const cats = data ? JSON.parse(data) : DEFAULT_CATEGORIES
+    return mergeWithDefaultCategories(cats)
   } catch { return DEFAULT_CATEGORIES }
 }
 
