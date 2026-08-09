@@ -1,12 +1,15 @@
 import type { Config } from 'tailwindcss'
+import path from 'path'
 
-// Light/dark theme toggle uses the 'dark' class on <html>
+// Absolute paths: Tailwind resolves relative globs against process.cwd(), which
+// doesn't always match this project's directory (e.g. when the dev server is
+// launched with an explicit project-dir argument from a different cwd).
 const config: Config = {
   darkMode: 'class',
   content: [
-    './pages/**/*.{js,ts,jsx,tsx,mdx}',
-    './components/**/*.{js,ts,jsx,tsx,mdx}',
-    './app/**/*.{js,ts,jsx,tsx,mdx}',
+    path.join(__dirname, 'pages/**/*.{js,ts,jsx,tsx,mdx}'),
+    path.join(__dirname, 'components/**/*.{js,ts,jsx,tsx,mdx}'),
+    path.join(__dirname, 'app/**/*.{js,ts,jsx,tsx,mdx}'),
   ],
   theme: {
     extend: {

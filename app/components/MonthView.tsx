@@ -101,7 +101,10 @@ export default function FactView({
   const totalCurrentPlanned = currentCategories.reduce((s, c) => s + (annualPlan[c.id] || 0), 0)
   const totalExpensePlanned = totalMandatoryPlanned + totalCurrentPlanned
 
-  const closingBalance = openingBalance + totalIncomeActual - totalExpenseActual
+  // Сумма именно по счетам (а не opening + доходы − расходы), иначе категория
+  // "Депозит" (расход, который зачисляется на счёт "Депозит") дважды уходит в минус:
+  // один раз как обычный расход, а сумма, зачисленная на депозит, не возвращается обратно.
+  const closingBalance = accounts.reduce((sum, acc) => sum + getAccountBalance(acc.id), 0)
 
   const now = new Date()
   const isCurrentMonth = year === now.getFullYear() && month === now.getMonth()
