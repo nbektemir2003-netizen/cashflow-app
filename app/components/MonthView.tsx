@@ -382,7 +382,12 @@ function CategorySection({
         <div className={`flex-1 h-px ${lineColor}`} />
       </div>
       <div className="space-y-2">
-        {categories.map(cat => {
+        {(() => {
+          const planned = categories.filter(cat => (annualPlan[cat.id] || 0) > 0 || getActual(cat.id) !== 0)
+          // Если в разделе вообще нет запланированных/фактических категорий (например, план ещё не задан),
+          // показываем все — иначе будет некуда добавить самую первую операцию.
+          return planned.length > 0 ? planned : categories
+        })().map(cat => {
           const planned = annualPlan[cat.id] || 0
           const actual = getActual(cat.id)
           const txs = getCategoryTx(cat.id)
