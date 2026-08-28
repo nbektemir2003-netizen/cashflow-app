@@ -301,7 +301,14 @@ export default function Home() {
     const expenseIds = new Set(categories.filter(c => c.group !== 'income').map(c => c.id))
     const prevIncome = prevTx.filter(t => incomeIds.has(t.categoryId)).reduce((s, t) => s + t.amount, 0)
     const prevExpense = prevTx.filter(t => expenseIds.has(t.categoryId)).reduce((s, t) => s + t.amount, 0)
-    return prevOpening + prevIncome - prevExpense
+    // Категория "Депозит" списывается как расход с одного счёта, но сумма никуда не уходит —
+    // она зачисляется на счёт "Депозит". Для общего остатка (сумма по всем счетам) это
+    // внутреннее перемещение денег, а не реальный расход — иначе он вычитался бы дважды
+    // (см. такую же логику в getAccountOpeningBalance и MonthView.getAccountBalance).
+    const prevDepositTopUps = prevTx
+      .filter(t => t.categoryId === DEPOSIT_TOPUP_CATEGORY_ID && t.accountId !== DEPOSIT_ACCOUNT_ID)
+      .reduce((s, t) => s + Math.abs(t.amount), 0)
+    return prevOpening + prevIncome - prevExpense + prevDepositTopUps
   }
 
   // Остаток конкретного счёта на начало месяца для плиток "Счета".
