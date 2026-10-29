@@ -153,3 +153,49 @@ export function getAnnualPlan(): AnnualPlan {
     return data ? JSON.parse(data) : {}
   } catch { return {} }
 }
+
+// Очередь несинхронизированных изменений. Операция/перевод попадает сюда в момент
+// добавления и уходит, только когда облако подтвердило сохранение. При загрузке
+// после входа эти записи не затираются данными из облака (раньше облако перезаписывало
+// локальные данные целиком, и расход, не дошедший до сервера, пропадал после обновления).
+const SYNC_QUEUE_KEY = 'cashflow_sync_queue'
+
+// misc: 'plans' | 'cats' | 'recurring' | 'bal:<monthKey>' — всё, что хранится целиком, а не по записям
+export type SyncQueue = { txUp: string[]; txDel: string[]; trUp: string[]; trDel: string[]; misc: string[] }
+
+export function getSyncQueue(): SyncQueue {
+  const empty: SyncQueue = { txUp: [], txDel: [], trUp: [], trDel: [], misc: [] }
+  if (typeof window === 'undefined') return empty
+  try {
+    const data = localStorage.getItem(SYNC_QUEUE_KEY)
+    return data ? { ...empty, ...JSON.parse(data) } : empty
+  } catch { return empty }
+}
+
+function saveSyncQueue(q: SyncQueue): void {
+  try { localStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(q)) } catch {}
+}
+
+const OPPOSITE: Partial<Record<keyof SyncQueue, keyof SyncQueue>> = { txUp: 'txDel', txDel: 'txUp', trUp: 'trDel', trDel: 'trUp' }
+
+export function queueAdd(kind: keyof SyncQueue, id: string): void {
+  const q = getSyncQueue()
+  const opp = OPPOSITE[kind]
+  if (opp) q[opp] = q[opp].filter(x => x !== id)
+  if (!q[kind].includes(id)) q[kind].push(id)
+  saveSyncQueue(q)
+}
+
+export function queueRemove(kind: keyof SyncQueue, id: string): void {
+  const q = getSyncQueue()
+  q[kind] = q[kind].filter(x => x !== id)
+  saveSyncQueue(q)
+}
+
+// Облако + ещё не дошедшие до него локальные правки, минус ещё не дошедшие удаления
+export function mergeWithQueue<T extends { id: string }>(cloud: T[], local: T[], up: string[], del: string[]): T[] {
+  const map = new Map(cloud.map(x => [x.id, x] as [string, T]))
+  for (const x of local) if (up.includes(x.id)) map.set(x.id, x)
+  for (const id of del) map.delete(id)
+  return Array.from(map.values())
+}

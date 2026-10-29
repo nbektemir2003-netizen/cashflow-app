@@ -2,6 +2,17 @@ import { supabase } from './supabase'
 import { AnnualPlan, Transaction, Category, Account, Transfer, RecurringPayment } from './types'
 import { MonthlyPlans } from './storage'
 
+// Раньше ошибки сохранения в облако игнорировались — расход "добавлялся", а после
+// обновления страницы пропадал. Теперь ошибка логируется и показывается пользователю.
+function reportError(what: string, error: { message: string } | null): boolean {
+  if (!error) return true
+  console.error(`[cloud] ${what}:`, error.message)
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('cloud-sync-error', { detail: `${what}: ${error.message}` }))
+  }
+  return false
+}
+
 export async function cloudLoadPlan(userId: string): Promise<MonthlyPlans | null> {
   const { data, error } = await supabase
     .from('cashflow_plans')
@@ -29,10 +40,11 @@ export async function cloudLoadPlan(userId: string): Promise<MonthlyPlans | null
   return raw as MonthlyPlans
 }
 
-export async function cloudSavePlan(userId: string, plans: MonthlyPlans): Promise<void> {
-  await supabase
+export async function cloudSavePlan(userId: string, plans: MonthlyPlans): Promise<boolean> {
+  const { error } = await supabase
     .from('cashflow_plans')
     .upsert({ user_id: userId, plan: plans, updated_at: new Date().toISOString() })
+  return reportError('план', error)
 }
 
 export async function cloudLoadTransactions(userId: string): Promise<Transaction[] | null> {
@@ -52,8 +64,8 @@ export async function cloudLoadTransactions(userId: string): Promise<Transaction
   }))
 }
 
-export async function cloudSaveTransaction(userId: string, t: Transaction): Promise<void> {
-  await supabase.from('cashflow_transactions').upsert({
+export async function cloudSaveTransaction(userId: string, t: Transaction): Promise<boolean> {
+  const { error } = await supabase.from('cashflow_transactions').upsert({
     id: t.id,
     user_id: userId,
     category_id: t.categoryId,
@@ -62,23 +74,21 @@ export async function cloudSaveTransaction(userId: string, t: Transaction): Prom
     note: t.note || null,
     account_id: t.accountId || null,
   })
+  return reportError('операция', error)
 }
 
-export async function cloudDeleteTransaction(userId: string, txId: string): Promise<void> {
-  await supabase.from('cashflow_transactions').delete().match({ id: txId, user_id: userId })
+export async function cloudDeleteTransaction(userId: string, txId: string): Promise<boolean> {
+  const { error } = await supabase.from('cashflow_transactions').delete().match({ id: txId, user_id: userId })
+  return reportError('удаление операции', error)
 }
 
-export async function cloudUpdateTransaction(userId: string, t: Transaction): Promise<void> {
-  await supabase.from('cashflow_transactions').upsert({
-    id: t.id, user_id: userId, category_id: t.categoryId,
-    amount: t.amount, timestamp: t.timestamp, note: t.note || null,
-    account_id: t.accountId || null,
-  })
+export async function cloudUpdateTransaction(userId: string, t: Transaction): Promise<boolean> {
+  return cloudSaveTransaction(userId, t)
 }
 
-export async function cloudUploadAllTransactions(userId: string, txs: Transaction[]): Promise<void> {
-  if (txs.length === 0) return
-  await supabase.from('cashflow_transactions').upsert(
+export async function cloudUploadAllTransactions(userId: string, txs: Transaction[]): Promise<boolean> {
+  if (txs.length === 0) return true
+  const { error } = await supabase.from('cashflow_transactions').upsert(
     txs.map(t => ({
       id: t.id,
       user_id: userId,
@@ -89,6 +99,7 @@ export async function cloudUploadAllTransactions(userId: string, txs: Transactio
       account_id: t.accountId || null,
     })),
   )
+  return reportError('загрузка операций', error)
 }
 
 export async function cloudLoadBalances(userId: string): Promise<Record<string, number> | null> {
@@ -100,10 +111,11 @@ export async function cloudLoadBalances(userId: string): Promise<Record<string, 
   return Object.fromEntries((data || []).map(r => [r.month_key, r.amount]))
 }
 
-export async function cloudSaveBalance(userId: string, monthKey: string, amount: number): Promise<void> {
-  await supabase
+export async function cloudSaveBalance(userId: string, monthKey: string, amount: number): Promise<boolean> {
+  const { error } = await supabase
     .from('cashflow_balances')
     .upsert({ user_id: userId, month_key: monthKey, amount })
+  return reportError('начальный остаток', error)
 }
 
 export async function cloudLoadCategories(userId: string): Promise<Category[] | null> {
@@ -116,8 +128,9 @@ export async function cloudLoadCategories(userId: string): Promise<Category[] | 
   return data.categories as Category[]
 }
 
-export async function cloudSaveCategories(userId: string, categories: Category[]): Promise<void> {
-  await supabase.from('cashflow_categories').upsert({ user_id: userId, categories })
+export async function cloudSaveCategories(userId: string, categories: Category[]): Promise<boolean> {
+  const { error } = await supabase.from('cashflow_categories').upsert({ user_id: userId, categories })
+  return reportError('категории', error)
 }
 
 export async function cloudLoadAccounts(userId: string): Promise<Account[] | null> {
@@ -125,8 +138,9 @@ export async function cloudLoadAccounts(userId: string): Promise<Account[] | nul
   if (error || !data) return null
   return data.accounts as Account[]
 }
-export async function cloudSaveAccounts(userId: string, accounts: Account[]): Promise<void> {
-  await supabase.from('cashflow_accounts').upsert({ user_id: userId, accounts })
+export async function cloudSaveAccounts(userId: string, accounts: Account[]): Promise<boolean> {
+  const { error } = await supabase.from('cashflow_accounts').upsert({ user_id: userId, accounts })
+  return reportError('счета', error)
 }
 
 export async function cloudLoadTransfers(userId: string): Promise<Transfer[] | null> {
@@ -135,11 +149,13 @@ export async function cloudLoadTransfers(userId: string): Promise<Transfer[] | n
   if (error) return null
   return (data || []).map(r => ({ id: r.id, fromAccountId: r.from_account_id, toAccountId: r.to_account_id, amount: r.amount, timestamp: r.timestamp, note: r.note ?? undefined }))
 }
-export async function cloudSaveTransfer(userId: string, t: Transfer): Promise<void> {
-  await supabase.from('cashflow_transfers').upsert({ id: t.id, user_id: userId, from_account_id: t.fromAccountId, to_account_id: t.toAccountId, amount: t.amount, timestamp: t.timestamp, note: t.note || null })
+export async function cloudSaveTransfer(userId: string, t: Transfer): Promise<boolean> {
+  const { error } = await supabase.from('cashflow_transfers').upsert({ id: t.id, user_id: userId, from_account_id: t.fromAccountId, to_account_id: t.toAccountId, amount: t.amount, timestamp: t.timestamp, note: t.note || null })
+  return reportError('перевод', error)
 }
-export async function cloudDeleteTransfer(userId: string, id: string): Promise<void> {
-  await supabase.from('cashflow_transfers').delete().match({ id, user_id: userId })
+export async function cloudDeleteTransfer(userId: string, id: string): Promise<boolean> {
+  const { error } = await supabase.from('cashflow_transfers').delete().match({ id, user_id: userId })
+  return reportError('удаление перевода', error)
 }
 
 export async function cloudLoadRecurring(userId: string): Promise<RecurringPayment[] | null> {
@@ -147,6 +163,7 @@ export async function cloudLoadRecurring(userId: string): Promise<RecurringPayme
   if (error || !data) return null
   return data.payments as RecurringPayment[]
 }
-export async function cloudSaveRecurring(userId: string, payments: RecurringPayment[]): Promise<void> {
-  await supabase.from('cashflow_recurring').upsert({ user_id: userId, payments })
+export async function cloudSaveRecurring(userId: string, payments: RecurringPayment[]): Promise<boolean> {
+  const { error } = await supabase.from('cashflow_recurring').upsert({ user_id: userId, payments })
+  return reportError('повторяющиеся платежи', error)
 }

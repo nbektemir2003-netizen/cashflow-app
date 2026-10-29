@@ -12,6 +12,7 @@ import {
   getTransfers, saveTransfers,
   getRecurring, saveRecurring,
   DEFAULT_ACCOUNTS, DEPOSIT_ACCOUNT_ID, mergeWithDefaultCategories,
+  getSyncQueue, queueAdd, queueRemove, mergeWithQueue,
   MonthlyPlans, monthKey,
 } from './lib/storage'
 import {
@@ -54,6 +55,16 @@ export default function Home() {
 
   useEffect(() => {
     setIsLight(!document.documentElement.classList.contains('dark'))
+  }, [])
+
+  // Ошибки сохранения в облако больше не глотаются молча
+  useEffect(() => {
+    const onError = (e: Event) => {
+      const msg = String((e as CustomEvent).detail)
+      setNotifications(prev => prev.some(n => n.message === msg) ? prev : [...prev, { id: `${Date.now()}-${Math.random()}`, message: msg, categoryName: '⚠️ Не сохранилось в облаке' }])
+    }
+    window.addEventListener('cloud-sync-error', onError)
+    return () => window.removeEventListener('cloud-sync-error', onError)
   }, [])
 
   const toggleTheme = () => {
@@ -122,22 +133,52 @@ export default function Home() {
       cloudLoadRecurring(uid),
     ])
 
-    const finalPlans = cloudPlans ?? localPlans
+    // Изменения, которые не дошли до облака, имеют приоритет над облачными данными —
+    // иначе расход, не успевший сохраниться на сервере, пропадал после обновления страницы.
+    const q = getSyncQueue()
+    const pending = (k: string) => q.misc.includes(k)
+
+    const finalPlans = pending('plans') ? localPlans : (cloudPlans ?? localPlans)
     const finalTx = (cloudTx !== null && cloudTx.length > 0)
-      ? cloudTx
+      ? mergeWithQueue(cloudTx, localTx, q.txUp, q.txDel)
       : localTx.length > 0
       ? (await cloudUploadAllTransactions(uid, localTx), localTx)
       : []
-    const finalBalances = cloudBalances ?? localBalances
-    const finalCats = mergeWithDefaultCategories(cloudCats ?? localCats)
+    const finalBalances = { ...(cloudBalances ?? localBalances) }
+    for (const k of q.misc) {
+      if (k.startsWith('bal:') && localBalances[k.slice(4)] !== undefined) finalBalances[k.slice(4)] = localBalances[k.slice(4)]
+    }
+    const finalCats = mergeWithDefaultCategories(pending('cats') ? localCats : (cloudCats ?? localCats))
     const finalAccounts = cloudAccounts ?? localAccounts
-    const finalTransfers = cloudTransfers ?? localTransfers
-    const finalRecurring = cloudRecurring ?? localRecurring
+    const finalTransfers = cloudTransfers !== null
+      ? mergeWithQueue(cloudTransfers, localTransfers, q.trUp, q.trDel)
+      : localTransfers
+    const finalRecurring = pending('recurring') ? localRecurring : (cloudRecurring ?? localRecurring)
 
     if (!cloudPlans && Object.keys(localPlans).length > 0) await cloudSavePlan(uid, localPlans)
     if (!cloudCats || finalCats.length !== cloudCats.length) await cloudSaveCategories(uid, finalCats)
     if (!cloudAccounts) await cloudSaveAccounts(uid, finalAccounts)
     if (!cloudRecurring) await cloudSaveRecurring(uid, finalRecurring)
+
+    // Повторно отправляем то, что не дошло в прошлый раз
+    void (async () => {
+      for (const id of q.txUp) {
+        const t = finalTx.find(x => x.id === id)
+        if (t && await cloudSaveTransaction(uid, t)) queueRemove('txUp', id)
+      }
+      for (const id of q.txDel) if (await cloudDeleteTransaction(uid, id)) queueRemove('txDel', id)
+      for (const id of q.trUp) {
+        const t = finalTransfers.find(x => x.id === id)
+        if (t && await cloudSaveTransfer(uid, t)) queueRemove('trUp', id)
+      }
+      for (const id of q.trDel) if (await cloudDeleteTransfer(uid, id)) queueRemove('trDel', id)
+      if (pending('plans') && await cloudSavePlan(uid, finalPlans)) queueRemove('misc', 'plans')
+      if (pending('cats') && await cloudSaveCategories(uid, finalCats)) queueRemove('misc', 'cats')
+      if (pending('recurring') && await cloudSaveRecurring(uid, finalRecurring)) queueRemove('misc', 'recurring')
+      for (const k of q.misc) {
+        if (k.startsWith('bal:') && finalBalances[k.slice(4)] !== undefined && await cloudSaveBalance(uid, k.slice(4), finalBalances[k.slice(4)])) queueRemove('misc', k)
+      }
+    })()
 
     setMonthlyPlans(finalPlans)
     setTransactions(finalTx)
@@ -184,13 +225,19 @@ export default function Home() {
   const handlePlansChange = useCallback(async (plans: MonthlyPlans) => {
     setMonthlyPlans(plans)
     saveMonthlyPlans(plans)
-    if (userId) cloudSavePlan(userId, plans)
+    if (userId) {
+      queueAdd('misc', 'plans')
+      if (await cloudSavePlan(userId, plans)) queueRemove('misc', 'plans')
+    }
   }, [userId])
 
   const handleCategoriesChange = useCallback(async (cats: Category[]) => {
     setCategories(cats)
     saveStoredCategories(cats)
-    if (userId) cloudSaveCategories(userId, cats)
+    if (userId) {
+      queueAdd('misc', 'cats')
+      if (await cloudSaveCategories(userId, cats)) queueRemove('misc', 'cats')
+    }
   }, [userId])
 
   const handleAddTransaction = useCallback(
@@ -198,7 +245,10 @@ export default function Home() {
       const updated = [...transactions, transaction]
       setTransactions(updated)
       saveTransactions(updated)
-      if (userId) cloudSaveTransaction(userId, transaction)
+      if (userId) {
+        queueAdd('txUp', transaction.id)
+        cloudSaveTransaction(userId, transaction).then(ok => { if (ok) queueRemove('txUp', transaction.id) })
+      }
       setLastAction({ type: 'transaction', id: transaction.id })
 
       const currentPlan = monthlyPlans[monthKey(currentYear, currentMonth)]?.amounts || {}
@@ -232,21 +282,30 @@ export default function Home() {
     const updated = transactions.filter(t => t.id !== id)
     setTransactions(updated)
     saveTransactions(updated)
-    if (userId) cloudDeleteTransaction(userId, id)
+    if (userId) {
+      queueAdd('txDel', id)
+      cloudDeleteTransaction(userId, id).then(ok => { if (ok) queueRemove('txDel', id) })
+    }
   }, [transactions, userId])
 
   const handleEditTransaction = useCallback(async (tx: Transaction) => {
     const updated = transactions.map(t => t.id === tx.id ? tx : t)
     setTransactions(updated)
     saveTransactions(updated)
-    if (userId) cloudUpdateTransaction(userId, tx)
+    if (userId) {
+      queueAdd('txUp', tx.id)
+      cloudUpdateTransaction(userId, tx).then(ok => { if (ok) queueRemove('txUp', tx.id) })
+    }
   }, [transactions, userId])
 
   const handleAddTransfer = useCallback(async (t: Transfer) => {
     const updated = [...transfers, t]
     setTransfers(updated)
     saveTransfers(updated)
-    if (userId) cloudSaveTransfer(userId, t)
+    if (userId) {
+      queueAdd('trUp', t.id)
+      cloudSaveTransfer(userId, t).then(ok => { if (ok) queueRemove('trUp', t.id) })
+    }
     setLastAction({ type: 'transfer', id: t.id })
   }, [transfers, userId])
 
@@ -254,7 +313,10 @@ export default function Home() {
     const updated = transfers.filter(t => t.id !== id)
     setTransfers(updated)
     saveTransfers(updated)
-    if (userId) cloudDeleteTransfer(userId, id)
+    if (userId) {
+      queueAdd('trDel', id)
+      cloudDeleteTransfer(userId, id).then(ok => { if (ok) queueRemove('trDel', id) })
+    }
   }, [transfers, userId])
 
   // Отменяет последнее добавленное действие (расход/доход/перевод),
@@ -269,7 +331,10 @@ export default function Home() {
   const handleSaveRecurring = useCallback(async (r: RecurringPayment[]) => {
     setRecurring(r)
     saveRecurring(r)
-    if (userId) cloudSaveRecurring(userId, r)
+    if (userId) {
+      queueAdd('misc', 'recurring')
+      if (await cloudSaveRecurring(userId, r)) queueRemove('misc', 'recurring')
+    }
   }, [userId])
 
   const handleSetOpeningBalance = useCallback(
@@ -278,7 +343,10 @@ export default function Home() {
       const updated = { ...openingBalances, [key]: amount }
       setOpeningBalances(updated)
       saveOpeningBalances(updated)
-      if (userId) cloudSaveBalance(userId, key, amount)
+      if (userId) {
+        queueAdd('misc', `bal:${key}`)
+        cloudSaveBalance(userId, key, amount).then(ok => { if (ok) queueRemove('misc', `bal:${key}`) })
+      }
     },
     [openingBalances, currentYear, currentMonth, userId],
   )
