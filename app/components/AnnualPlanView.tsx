@@ -12,9 +12,8 @@ interface Props {
   currentYear: number
   currentMonth: number
   categories: Category[]
-  getPlannedOpening: (year: number, month: number) => number | null
-  isOpeningManual: (year: number, month: number) => boolean
-  onSetOpening: (year: number, month: number, amount: number | null) => void
+  // Автоматический начальный остаток плана (без ручной правки этого месяца)
+  getAutoOpening: (year: number, month: number) => number | null
   onChange: (plans: MonthlyPlans) => void
   onCategoriesChange: (cats: Category[]) => void
 }
@@ -22,7 +21,7 @@ interface Props {
 type EditCatModal = { cat?: Category; group: CategoryGroup } | null
 
 export default function AnnualPlanView({
-  monthlyPlans, transactions, currentYear, currentMonth, categories, getPlannedOpening, isOpeningManual, onSetOpening, onChange, onCategoriesChange,
+  monthlyPlans, transactions, currentYear, currentMonth, categories, getAutoOpening, onChange, onCategoriesChange,
 }: Props) {
   const [selYear, setSelYear] = useState(currentYear)
   const [selMonth, setSelMonth] = useState(currentMonth)
@@ -30,6 +29,8 @@ export default function AnnualPlanView({
   const selKey = monthKey(selYear, selMonth)
   const [localAmounts, setLocalAmounts] = useState<Record<string, number>>(monthlyPlans[selKey]?.amounts || {})
   const [localNotes, setLocalNotes] = useState<Record<string, string>>(monthlyPlans[selKey]?.notes || {})
+  // Ручной начальный остаток ЭТОГО плана. Живёт только в плане и не трогает фактические остатки во вкладке "Месяц".
+  const [localOpening, setLocalOpening] = useState<number | undefined>(monthlyPlans[selKey]?.opening)
   const [saved, setSaved] = useState(false)
   const [editCatModal, setEditCatModal] = useState<EditCatModal>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
@@ -38,14 +39,15 @@ export default function AnnualPlanView({
   // Несохранённые правки: пишем в хранилище автоматически (через паузу после ввода,
   // при смене месяца/года и при уходе со вкладки), иначе ввод терялся без нажатия "Сохранить".
   const dirty = useRef(false)
-  const latest = useRef({ localAmounts, localNotes, selKey, monthlyPlans, onChange })
-  latest.current = { localAmounts, localNotes, selKey, monthlyPlans, onChange }
+  const latest = useRef({ localAmounts, localNotes, localOpening, selKey, monthlyPlans, onChange })
+  latest.current = { localAmounts, localNotes, localOpening, selKey, monthlyPlans, onChange }
 
   const persist = () => {
     if (!dirty.current) return
     dirty.current = false
     const cur = latest.current
     const monthPlan: MonthPlan = { amounts: cur.localAmounts, notes: cur.localNotes }
+    if (cur.localOpening !== undefined) monthPlan.opening = cur.localOpening
     cur.onChange({ ...cur.monthlyPlans, [cur.selKey]: monthPlan })
     setSaved(true)
     setTimeout(() => setSaved(false), 2500)
@@ -58,6 +60,7 @@ export default function AnnualPlanView({
   useEffect(() => {
     setLocalAmounts(monthlyPlans[selKey]?.amounts || {})
     setLocalNotes(monthlyPlans[selKey]?.notes || {})
+    setLocalOpening(monthlyPlans[selKey]?.opening)
     setSaved(false)
     setExpandedNote(null)
   }, [selKey])
@@ -68,13 +71,14 @@ export default function AnnualPlanView({
     if (dirty.current) return
     setLocalAmounts(monthlyPlans[selKey]?.amounts || {})
     setLocalNotes(monthlyPlans[selKey]?.notes || {})
+    setLocalOpening(monthlyPlans[selKey]?.opening)
   }, [monthlyPlans])
 
   useEffect(() => {
     if (!dirty.current) return
     const t = setTimeout(persist, 700)
     return () => clearTimeout(t)
-  }, [localAmounts, localNotes])
+  }, [localAmounts, localNotes, localOpening])
 
   useEffect(() => () => persist(), [])
 
@@ -146,19 +150,28 @@ export default function AnnualPlanView({
   // Плановый конечный остаток = остаток на начало месяца + доходы − расходы.
   // Пополнение депозита не вычитаем: деньги остаются на счетах, просто переходят на "Депозит".
   const plannedDeposit = localAmounts[DEPOSIT_TOPUP_CATEGORY_ID] || 0
-  const plannedOpening = getPlannedOpening(selYear, selMonth)
-  const openingManual = isOpeningManual(selYear, selMonth)
+  const autoOpening = getAutoOpening(selYear, selMonth)
+  const openingManual = localOpening !== undefined
+  const plannedOpening = autoOpening === null ? null : (localOpening ?? autoOpening)
   const [openingDraft, setOpeningDraft] = useState<string | null>(null)
   const openingCancelled = useRef(false)
+  const openingInputRef = useRef<HTMLInputElement>(null)
+  // Старое значение выделяем при открытии поля, чтобы набор сразу его заменял
+  useEffect(() => { if (openingDraft !== null) openingInputRef.current?.select() }, [openingDraft === null])
 
   const startEditOpening = () => {
     openingCancelled.current = false
     setOpeningDraft(plannedOpening === null ? '' : String(plannedOpening).replace('.', ','))
   }
+  const setOpening = (value: number | undefined) => {
+    setLocalOpening(value)
+    dirty.current = true
+    setSaved(false)
+  }
   const commitOpening = () => {
     if (openingCancelled.current || openingDraft === null) return setOpeningDraft(null)
     const n = parseFloat(openingDraft.replace(/\s/g, '').replace(',', '.'))
-    if (!isNaN(n) && !(n === plannedOpening && !openingManual)) onSetOpening(selYear, selMonth, n)
+    if (!isNaN(n) && !(n === plannedOpening && !openingManual)) setOpening(n)
     setOpeningDraft(null)
   }
   const cancelOpening = () => { openingCancelled.current = true; setOpeningDraft(null) }
@@ -259,11 +272,11 @@ export default function AnnualPlanView({
             </div>
           </div>
           <div className="text-gray-500 text-xs mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-1">
-            <span>На начало месяца</span>
+            <span>На начало месяца (план)</span>
             {openingDraft !== null ? (
               <>
                 <input
-                  autoFocus type="text" inputMode="decimal" value={openingDraft}
+                  ref={openingInputRef} autoFocus type="text" inputMode="decimal" value={openingDraft}
                   onChange={e => setOpeningDraft(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter') commitOpening(); if (e.key === 'Escape') cancelOpening() }}
                   onBlur={commitOpening}
@@ -272,7 +285,7 @@ export default function AnnualPlanView({
                 <button onMouseDown={e => { e.preventDefault(); cancelOpening() }} className="text-gray-500 hover:text-gray-300 px-1">✕</button>
               </>
             ) : (
-              <button onClick={startEditOpening} title="Изменить начальный остаток вручную"
+              <button onClick={startEditOpening} title="Изменить начальный остаток плана вручную"
                 className="text-gray-900 dark:text-white font-medium hover:text-green-400 transition-colors">
                 {fmt(plannedOpening)} ✏️
               </button>
@@ -280,7 +293,7 @@ export default function AnnualPlanView({
             {openingManual && openingDraft === null && (
               <>
                 <span className="text-yellow-500">вручную</span>
-                <button onClick={() => onSetOpening(selYear, selMonth, null)} title="Вернуть автоматический расчёт"
+                <button onClick={() => setOpening(undefined)} title="Вернуть автоматический расчёт"
                   className="text-blue-400 hover:text-blue-300">↺ авто</button>
               </>
             )}

@@ -35,6 +35,8 @@ export const DEFAULT_ACCOUNTS: Account[] = [
 export type MonthPlan = {
   amounts: Record<string, number>
   notes: Record<string, string>
+  // Ручной начальный остаток плана этого месяца (не влияет на фактический остаток во вкладке "Месяц")
+  opening?: number
 }
 export type MonthlyPlans = Record<string, MonthPlan>
 

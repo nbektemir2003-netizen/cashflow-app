@@ -19,7 +19,7 @@ import {
   cloudLoadPlan, cloudSavePlan,
   cloudLoadTransactions, cloudSaveTransaction, cloudUploadAllTransactions,
   cloudDeleteTransaction, cloudUpdateTransaction,
-  cloudLoadBalances, cloudSaveBalance, cloudDeleteBalance,
+  cloudLoadBalances, cloudSaveBalance,
   cloudLoadCategories, cloudSaveCategories,
   cloudLoadAccounts, cloudSaveAccounts,
   cloudLoadTransfers, cloudSaveTransfer, cloudDeleteTransfer,
@@ -148,9 +148,6 @@ export default function Home() {
     for (const k of q.misc) {
       if (k.startsWith('bal:') && localBalances[k.slice(4)] !== undefined) finalBalances[k.slice(4)] = localBalances[k.slice(4)]
     }
-    for (const k of q.misc) {
-      if (k.startsWith('baldel:')) delete finalBalances[k.slice(7)]
-    }
     const finalCats = mergeWithDefaultCategories(pending('cats') ? localCats : (cloudCats ?? localCats))
     const finalAccounts = cloudAccounts ?? localAccounts
     const finalTransfers = cloudTransfers !== null
@@ -178,9 +175,6 @@ export default function Home() {
       if (pending('plans') && await cloudSavePlan(uid, finalPlans)) queueRemove('misc', 'plans')
       if (pending('cats') && await cloudSaveCategories(uid, finalCats)) queueRemove('misc', 'cats')
       if (pending('recurring') && await cloudSaveRecurring(uid, finalRecurring)) queueRemove('misc', 'recurring')
-      for (const k of q.misc) {
-        if (k.startsWith('baldel:') && await cloudDeleteBalance(uid, k.slice(7))) queueRemove('misc', k)
-      }
       for (const k of q.misc) {
         if (k.startsWith('bal:') && finalBalances[k.slice(4)] !== undefined && await cloudSaveBalance(uid, k.slice(4), finalBalances[k.slice(4)])) queueRemove('misc', k)
       }
@@ -343,34 +337,18 @@ export default function Home() {
     }
   }, [userId])
 
-  // Ручной начальный остаток любого месяца (null — сбросить на автоматический расчёт).
-  // Используется и во вкладке "Месяц" (✏️), и в "План".
-  const handleSetMonthOpening = useCallback(
-    async (year: number, month: number, amount: number | null) => {
-      const key = monthKey(year, month)
-      const updated = { ...openingBalances }
-      if (amount === null) delete updated[key]
-      else updated[key] = amount
+  const handleSetOpeningBalance = useCallback(
+    async (amount: number) => {
+      const key = monthKey(currentYear, currentMonth)
+      const updated = { ...openingBalances, [key]: amount }
       setOpeningBalances(updated)
       saveOpeningBalances(updated)
       if (userId) {
-        if (amount === null) {
-          queueRemove('misc', `bal:${key}`)
-          queueAdd('misc', `baldel:${key}`)
-          cloudDeleteBalance(userId, key).then(ok => { if (ok) queueRemove('misc', `baldel:${key}`) })
-        } else {
-          queueRemove('misc', `baldel:${key}`)
-          queueAdd('misc', `bal:${key}`)
-          cloudSaveBalance(userId, key, amount).then(ok => { if (ok) queueRemove('misc', `bal:${key}`) })
-        }
+        queueAdd('misc', `bal:${key}`)
+        cloudSaveBalance(userId, key, amount).then(ok => { if (ok) queueRemove('misc', `bal:${key}`) })
       }
     },
-    [openingBalances, userId],
-  )
-
-  const handleSetOpeningBalance = useCallback(
-    (amount: number) => handleSetMonthOpening(currentYear, currentMonth, amount),
-    [handleSetMonthOpening, currentYear, currentMonth],
+    [openingBalances, currentYear, currentMonth, userId],
   )
 
   // Общий остаток (по всем счетам вместе — карта + наличные + депозит),
@@ -461,19 +439,26 @@ export default function Home() {
     return net
   }
 
-  // Остаток на начало месяца для вкладки "План". Для текущего и прошлых месяцев — фактический
-  // перенос; для будущих — прогноз: плановый конец предыдущего месяца. Для прошлых лет
-  // не считаем (null): getOpeningBalance там не имеет базового случая и ушёл бы в бесконечную рекурсию.
-  const getPlannedOpening = (year: number, month: number): number | null => {
+  // Остаток на начало месяца для вкладки "План" — свой у плана, фактические месяцы он не меняет.
+  // Автоматическое значение: для текущего и прошлых месяцев года — фактический перенос (только
+  // читаем), для будущих — прогноз: плановый конец предыдущего месяца плана. Свою ручную правку
+  // этого месяца (monthlyPlans[...].opening) здесь не учитываем — её подставляет сама вкладка.
+  // Для прошлых лет null: getOpeningBalance там не имеет базового случая (бесконечная рекурсия).
+  const getAutoPlannedOpening = (year: number, month: number): number | null => {
     const nowYear = now.getFullYear()
     if (year < nowYear) return null
-    const key = monthKey(year, month)
-    if (openingBalances[key] !== undefined) return openingBalances[key]
     if (year === nowYear && month <= now.getMonth()) return getOpeningBalance(year, month)
     const prevM = month === 0 ? 11 : month - 1
     const prevY = month === 0 ? year - 1 : year
     const prevOpening = getPlannedOpening(prevY, prevM)
     return prevOpening === null ? null : prevOpening + getPlannedNet(prevY, prevM)
+  }
+
+  // С учётом ручного начального остатка плана этого месяца
+  const getPlannedOpening = (year: number, month: number): number | null => {
+    const auto = getAutoPlannedOpening(year, month)
+    if (auto === null) return null
+    return monthlyPlans[monthKey(year, month)]?.opening ?? auto
   }
 
   const prevMonth = () => {
@@ -616,9 +601,7 @@ export default function Home() {
             currentYear={currentYear}
             currentMonth={currentMonth}
             categories={categories}
-            getPlannedOpening={getPlannedOpening}
-            isOpeningManual={(y, m) => openingBalances[monthKey(y, m)] !== undefined}
-            onSetOpening={handleSetMonthOpening}
+            getAutoOpening={getAutoPlannedOpening}
             onChange={handlePlansChange}
             onCategoriesChange={handleCategoriesChange}
           />
