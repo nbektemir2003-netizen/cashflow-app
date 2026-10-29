@@ -2,7 +2,8 @@
 
 import { useState } from 'react'
 import { Transaction, Category, Account } from '../lib/types'
-import { fmt, CURRENCY } from '../lib/data'
+import { CURRENCY } from '../lib/data'
+import { sanitizeAmountInput, parseAmount, displayAmountInput, amountToInput } from '../lib/amount'
 
 interface Props {
   transaction: Transaction
@@ -17,7 +18,7 @@ const PRESETS = [500, 1000, 5000, 10000, 50000, 100000]
 
 export default function EditTransactionModal({ transaction, categories, accounts, onSave, onDelete, onClose }: Props) {
   const isNegative = transaction.amount < 0
-  const [rawAmount, setRawAmount] = useState(String(Math.abs(transaction.amount)))
+  const [rawAmount, setRawAmount] = useState(amountToInput(transaction.amount))
   const [note, setNote] = useState(transaction.note || '')
   const [categoryId, setCategoryId] = useState(transaction.categoryId)
   const [accountId, setAccountId] = useState(transaction.accountId || accounts[0]?.id || '')
@@ -27,11 +28,8 @@ export default function EditTransactionModal({ transaction, categories, accounts
   const mandatoryCategories = categories.filter(c => c.group === 'mandatory')
   const currentCategories = categories.filter(c => c.group === 'current')
 
-  const selectedCat = categories.find(c => c.id === categoryId)
-  const selectedGroup = selectedCat?.group ?? 'current'
-
   const handleSave = () => {
-    const amount = parseFloat(rawAmount.replace(/\D/g, ''))
+    const amount = parseAmount(rawAmount)
     if (isNaN(amount) || amount <= 0) return
     const newAmount = isNegative ? -Math.abs(amount) : Math.abs(amount)
     onSave({ ...transaction, categoryId, amount: newAmount, note: note.trim() || undefined, accountId: accountId || undefined })
@@ -57,12 +55,58 @@ export default function EditTransactionModal({ transaction, categories, accounts
         </div>
 
         <div className="px-5 pb-5 space-y-4">
-          {/* Category selector */}
+          {/* Amount */}
+          <div>
+            <div className="text-gray-600 dark:text-gray-400 text-xs mb-2">Сумма</div>
+            <div className="relative">
+              <input
+                type="text"
+                inputMode="decimal"
+                value={displayAmountInput(rawAmount)}
+                onChange={e => setRawAmount(sanitizeAmountInput(e.target.value))}
+                className="w-full bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-white text-2xl font-bold p-3 pr-12 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500"
+                placeholder="0"
+              />
+              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-600 dark:text-gray-400 text-lg">{CURRENCY}</span>
+            </div>
+            <div className="flex flex-wrap gap-1.5 mt-2">
+              {PRESETS.map(p => (
+                <button
+                  key={p}
+                  onClick={() => setRawAmount(String(p))}
+                  className={`px-2.5 py-1 rounded-lg text-xs border transition-colors ${rawAmount === String(p) ? 'border-green-500 text-green-400 bg-green-900/20' : 'border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-400 bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700'}`}
+                >
+                  {p.toLocaleString('ru-RU')}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Category: компактный выбор вместо длинного списка кнопок, который сдвигал сумму вниз */}
           <div>
             <div className="text-gray-600 dark:text-gray-400 text-xs mb-2">Категория</div>
-            <CategoryGroup title="💰 Доходы" cats={incomeCategories} selected={categoryId} onSelect={setCategoryId} color="green" />
-            <CategoryGroup title="🔒 Обязательные" cats={mandatoryCategories} selected={categoryId} onSelect={setCategoryId} color="orange" />
-            <CategoryGroup title="🛒 Текущие" cats={currentCategories} selected={categoryId} onSelect={setCategoryId} color="red" />
+            <select
+              value={categoryId}
+              onChange={e => setCategoryId(e.target.value)}
+              className="w-full bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-white p-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
+            >
+              {!categories.some(c => c.id === categoryId) && <option value={categoryId}>Категория удалена</option>}
+              {incomeCategories.length > 0 && (
+                <optgroup label="💰 Доходы">
+                  {incomeCategories.map(c => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
+                </optgroup>
+              )}
+              {mandatoryCategories.length > 0 && (
+                <optgroup label="🔒 Обязательные">
+                  {mandatoryCategories.map(c => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
+                </optgroup>
+              )}
+              {currentCategories.length > 0 && (
+                <optgroup label="🛒 Текущие">
+                  {currentCategories.map(c => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
+                </optgroup>
+              )}
+            </select>
           </div>
 
           {/* Account selector */}
@@ -87,33 +131,6 @@ export default function EditTransactionModal({ transaction, categories, accounts
               </div>
             </div>
           )}
-
-          {/* Amount */}
-          <div>
-            <div className="text-gray-600 dark:text-gray-400 text-xs mb-2">Сумма</div>
-            <div className="relative">
-              <input
-                type="text"
-                inputMode="numeric"
-                value={rawAmount}
-                onChange={e => setRawAmount(e.target.value.replace(/\D/g, ''))}
-                className="w-full bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-white text-2xl font-bold p-3 pr-12 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500"
-                placeholder="0"
-              />
-              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-600 dark:text-gray-400 text-lg">{CURRENCY}</span>
-            </div>
-            <div className="flex flex-wrap gap-1.5 mt-2">
-              {PRESETS.map(p => (
-                <button
-                  key={p}
-                  onClick={() => setRawAmount(String(p))}
-                  className={`px-2.5 py-1 rounded-lg text-xs border transition-colors ${rawAmount === String(p) ? 'border-green-500 text-green-400 bg-green-900/20' : 'border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-400 bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700'}`}
-                >
-                  {p.toLocaleString('ru-RU')}
-                </button>
-              ))}
-            </div>
-          </div>
 
           {/* Note */}
           <div>
@@ -152,37 +169,6 @@ export default function EditTransactionModal({ transaction, categories, accounts
             </div>
           )}
         </div>
-      </div>
-    </div>
-  )
-}
-
-function CategoryGroup({ title, cats, selected, onSelect, color }: {
-  title: string; cats: Category[]; selected: string
-  onSelect: (id: string) => void; color: 'green' | 'orange' | 'red'
-}) {
-  if (cats.length === 0) return null
-  const colors = {
-    green: 'border-green-500 bg-green-900/30 text-green-300',
-    orange: 'border-orange-500 bg-orange-900/30 text-orange-300',
-    red: 'border-red-500 bg-red-900/30 text-red-300',
-  }
-  return (
-    <div className="mb-2">
-      <div className="text-gray-400 dark:text-gray-600 text-xs mb-1">{title}</div>
-      <div className="flex flex-wrap gap-1.5">
-        {cats.map(cat => (
-          <button
-            key={cat.id}
-            onClick={() => onSelect(cat.id)}
-            className={`px-2.5 py-1 rounded-lg border text-xs transition-all flex items-center gap-1 ${
-              selected === cat.id ? colors[color] : 'border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-500 hover:text-gray-800 dark:hover:text-gray-200'
-            }`}
-          >
-            <span>{cat.icon}</span>
-            <span>{cat.name}</span>
-          </button>
-        ))}
       </div>
     </div>
   )

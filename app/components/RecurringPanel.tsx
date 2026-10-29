@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Account, Category, RecurringPayment } from '../lib/types'
 import { fmt, CURRENCY } from '../lib/data'
+import { sanitizeAmountInput, parseAmount, displayAmountInput } from '../lib/amount'
 
 interface Props {
   recurring: RecurringPayment[]
@@ -27,7 +28,7 @@ export default function RecurringPanel({ recurring, accounts, categories, onSave
 
   const handleAdd = () => {
     if (!newCatId) return
-    const amount = parseFloat(newAmount)
+    const amount = parseAmount(newAmount)
     if (isNaN(amount) || amount <= 0) return
     const r: RecurringPayment = {
       id: `rec-${Date.now()}`,
@@ -131,8 +132,8 @@ export default function RecurringPanel({ recurring, accounts, categories, onSave
             <div>
               <div className="text-gray-500 text-xs mb-1.5">Сумма</div>
               <div className="relative">
-                <input type="text" inputMode="numeric" value={newAmount}
-                  onChange={e => setNewAmount(e.target.value.replace(/\D/g, ''))}
+                <input type="text" inputMode="decimal" value={displayAmountInput(newAmount)}
+                  onChange={e => setNewAmount(sanitizeAmountInput(e.target.value))}
                   placeholder="0"
                   className="w-full bg-gray-300 dark:bg-gray-700 text-gray-900 dark:text-white text-lg font-bold p-2.5 pr-8 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-600 dark:text-gray-400 text-sm">{CURRENCY}</span>
