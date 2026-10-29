@@ -13,6 +13,8 @@ interface Props {
   currentMonth: number
   categories: Category[]
   getPlannedOpening: (year: number, month: number) => number | null
+  isOpeningManual: (year: number, month: number) => boolean
+  onSetOpening: (year: number, month: number, amount: number | null) => void
   onChange: (plans: MonthlyPlans) => void
   onCategoriesChange: (cats: Category[]) => void
 }
@@ -20,7 +22,7 @@ interface Props {
 type EditCatModal = { cat?: Category; group: CategoryGroup } | null
 
 export default function AnnualPlanView({
-  monthlyPlans, transactions, currentYear, currentMonth, categories, getPlannedOpening, onChange, onCategoriesChange,
+  monthlyPlans, transactions, currentYear, currentMonth, categories, getPlannedOpening, isOpeningManual, onSetOpening, onChange, onCategoriesChange,
 }: Props) {
   const [selYear, setSelYear] = useState(currentYear)
   const [selMonth, setSelMonth] = useState(currentMonth)
@@ -145,6 +147,22 @@ export default function AnnualPlanView({
   // Пополнение депозита не вычитаем: деньги остаются на счетах, просто переходят на "Депозит".
   const plannedDeposit = localAmounts[DEPOSIT_TOPUP_CATEGORY_ID] || 0
   const plannedOpening = getPlannedOpening(selYear, selMonth)
+  const openingManual = isOpeningManual(selYear, selMonth)
+  const [openingDraft, setOpeningDraft] = useState<string | null>(null)
+  const openingCancelled = useRef(false)
+
+  const startEditOpening = () => {
+    openingCancelled.current = false
+    setOpeningDraft(plannedOpening === null ? '' : String(plannedOpening).replace('.', ','))
+  }
+  const commitOpening = () => {
+    if (openingCancelled.current || openingDraft === null) return setOpeningDraft(null)
+    const n = parseFloat(openingDraft.replace(/\s/g, '').replace(',', '.'))
+    if (!isNaN(n) && !(n === plannedOpening && !openingManual)) onSetOpening(selYear, selMonth, n)
+    setOpeningDraft(null)
+  }
+  const cancelOpening = () => { openingCancelled.current = true; setOpeningDraft(null) }
+
   const plannedClosing = plannedOpening === null ? null : plannedOpening + totalIncome - (totalExpense - plannedDeposit)
 
   const nowYear = new Date().getFullYear()
@@ -240,8 +258,35 @@ export default function AnnualPlanView({
               {fmt(plannedClosing)}
             </div>
           </div>
-          <div className="text-gray-500 text-xs mt-1">
-            На начало месяца {fmt(plannedOpening)} + доходы {fmt(totalIncome)} − расходы {fmt(totalExpense - plannedDeposit)}
+          <div className="text-gray-500 text-xs mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-1">
+            <span>На начало месяца</span>
+            {openingDraft !== null ? (
+              <>
+                <input
+                  autoFocus type="text" inputMode="decimal" value={openingDraft}
+                  onChange={e => setOpeningDraft(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') commitOpening(); if (e.key === 'Escape') cancelOpening() }}
+                  onBlur={commitOpening}
+                  className="w-32 bg-gray-300 dark:bg-gray-700 text-gray-900 dark:text-white text-right px-2 py-1 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-xs"
+                />
+                <button onMouseDown={e => { e.preventDefault(); cancelOpening() }} className="text-gray-500 hover:text-gray-300 px-1">✕</button>
+              </>
+            ) : (
+              <button onClick={startEditOpening} title="Изменить начальный остаток вручную"
+                className="text-gray-900 dark:text-white font-medium hover:text-green-400 transition-colors">
+                {fmt(plannedOpening)} ✏️
+              </button>
+            )}
+            {openingManual && openingDraft === null && (
+              <>
+                <span className="text-yellow-500">вручную</span>
+                <button onClick={() => onSetOpening(selYear, selMonth, null)} title="Вернуть автоматический расчёт"
+                  className="text-blue-400 hover:text-blue-300">↺ авто</button>
+              </>
+            )}
+          </div>
+          <div className="text-gray-500 text-xs mt-0.5">
+            + доходы {fmt(totalIncome)} − расходы {fmt(totalExpense - plannedDeposit)}
           </div>
           {plannedDeposit > 0 && (
             <div className="text-gray-500 text-xs mt-0.5">

@@ -129,6 +129,11 @@ export async function cloudSaveBalance(userId: string, monthKey: string, amount:
   return reportError('начальный остаток', error)
 }
 
+export async function cloudDeleteBalance(userId: string, monthKey: string): Promise<boolean> {
+  const { error } = await supabase.from('cashflow_balances').delete().match({ user_id: userId, month_key: monthKey })
+  return reportError('сброс начального остатка', error)
+}
+
 export async function cloudLoadCategories(userId: string): Promise<Category[] | null> {
   const { data, error } = await supabase
     .from('cashflow_categories')

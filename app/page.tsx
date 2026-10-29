@@ -19,7 +19,7 @@ import {
   cloudLoadPlan, cloudSavePlan,
   cloudLoadTransactions, cloudSaveTransaction, cloudUploadAllTransactions,
   cloudDeleteTransaction, cloudUpdateTransaction,
-  cloudLoadBalances, cloudSaveBalance,
+  cloudLoadBalances, cloudSaveBalance, cloudDeleteBalance,
   cloudLoadCategories, cloudSaveCategories,
   cloudLoadAccounts, cloudSaveAccounts,
   cloudLoadTransfers, cloudSaveTransfer, cloudDeleteTransfer,
@@ -148,6 +148,9 @@ export default function Home() {
     for (const k of q.misc) {
       if (k.startsWith('bal:') && localBalances[k.slice(4)] !== undefined) finalBalances[k.slice(4)] = localBalances[k.slice(4)]
     }
+    for (const k of q.misc) {
+      if (k.startsWith('baldel:')) delete finalBalances[k.slice(7)]
+    }
     const finalCats = mergeWithDefaultCategories(pending('cats') ? localCats : (cloudCats ?? localCats))
     const finalAccounts = cloudAccounts ?? localAccounts
     const finalTransfers = cloudTransfers !== null
@@ -175,6 +178,9 @@ export default function Home() {
       if (pending('plans') && await cloudSavePlan(uid, finalPlans)) queueRemove('misc', 'plans')
       if (pending('cats') && await cloudSaveCategories(uid, finalCats)) queueRemove('misc', 'cats')
       if (pending('recurring') && await cloudSaveRecurring(uid, finalRecurring)) queueRemove('misc', 'recurring')
+      for (const k of q.misc) {
+        if (k.startsWith('baldel:') && await cloudDeleteBalance(uid, k.slice(7))) queueRemove('misc', k)
+      }
       for (const k of q.misc) {
         if (k.startsWith('bal:') && finalBalances[k.slice(4)] !== undefined && await cloudSaveBalance(uid, k.slice(4), finalBalances[k.slice(4)])) queueRemove('misc', k)
       }
@@ -337,18 +343,34 @@ export default function Home() {
     }
   }, [userId])
 
-  const handleSetOpeningBalance = useCallback(
-    async (amount: number) => {
-      const key = monthKey(currentYear, currentMonth)
-      const updated = { ...openingBalances, [key]: amount }
+  // Ручной начальный остаток любого месяца (null — сбросить на автоматический расчёт).
+  // Используется и во вкладке "Месяц" (✏️), и в "План".
+  const handleSetMonthOpening = useCallback(
+    async (year: number, month: number, amount: number | null) => {
+      const key = monthKey(year, month)
+      const updated = { ...openingBalances }
+      if (amount === null) delete updated[key]
+      else updated[key] = amount
       setOpeningBalances(updated)
       saveOpeningBalances(updated)
       if (userId) {
-        queueAdd('misc', `bal:${key}`)
-        cloudSaveBalance(userId, key, amount).then(ok => { if (ok) queueRemove('misc', `bal:${key}`) })
+        if (amount === null) {
+          queueRemove('misc', `bal:${key}`)
+          queueAdd('misc', `baldel:${key}`)
+          cloudDeleteBalance(userId, key).then(ok => { if (ok) queueRemove('misc', `baldel:${key}`) })
+        } else {
+          queueRemove('misc', `baldel:${key}`)
+          queueAdd('misc', `bal:${key}`)
+          cloudSaveBalance(userId, key, amount).then(ok => { if (ok) queueRemove('misc', `bal:${key}`) })
+        }
       }
     },
-    [openingBalances, currentYear, currentMonth, userId],
+    [openingBalances, userId],
+  )
+
+  const handleSetOpeningBalance = useCallback(
+    (amount: number) => handleSetMonthOpening(currentYear, currentMonth, amount),
+    [handleSetMonthOpening, currentYear, currentMonth],
   )
 
   // Общий остаток (по всем счетам вместе — карта + наличные + депозит),
@@ -595,6 +617,8 @@ export default function Home() {
             currentMonth={currentMonth}
             categories={categories}
             getPlannedOpening={getPlannedOpening}
+            isOpeningManual={(y, m) => openingBalances[monthKey(y, m)] !== undefined}
+            onSetOpening={handleSetMonthOpening}
             onChange={handlePlansChange}
             onCategoriesChange={handleCategoriesChange}
           />
