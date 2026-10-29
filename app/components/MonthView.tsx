@@ -101,6 +101,24 @@ export default function FactView({
   const totalCurrentPlanned = currentCategories.reduce((s, c) => s + (annualPlan[c.id] || 0), 0)
   const totalExpensePlanned = totalMandatoryPlanned + totalCurrentPlanned
 
+  // Точные суммы по категориям, где план нарушен — без взаимозачёта. Раньше показывалась
+  // разница итогов, и перевыполнение одних категорий скрывало недобор/перерасход других.
+  // Доходы: сколько не добрали (факт ниже плана). Расходы: на сколько превысили план.
+  // Категории без плана не считаем — как и в строках ниже, "превышение" есть только при заданном плане.
+  const round2 = (n: number) => Math.round(n * 100) / 100
+  const incomeShortfall = round2(incomeCategories.reduce((sum, c) => {
+    const planned = annualPlan[c.id] || 0
+    const actual = getActual(c.id)
+    return planned > 0 && Math.round(actual) < Math.round(planned) ? sum + (planned - actual) : sum
+  }, 0))
+  const overspend = (cats: Category[]) => round2(cats.reduce((sum, c) => {
+    const planned = annualPlan[c.id] || 0
+    const actual = getActual(c.id)
+    return planned > 0 && Math.round(actual) > Math.round(planned) ? sum + (actual - planned) : sum
+  }, 0))
+  const mandatoryOverspend = overspend(mandatoryCategories)
+  const currentOverspend = overspend(currentCategories)
+
   // Сумма именно по счетам (а не opening + доходы − расходы), иначе категория
   // "Депозит" (расход, который зачисляется на счёт "Депозит") дважды уходит в минус:
   // один раз как обычный расход, а сумма, зачисленная на депозит, не возвращается обратно.
@@ -266,9 +284,9 @@ export default function FactView({
 
       {/* Summary */}
       <div className="grid grid-cols-3 gap-2 mb-5">
-        <SummaryCard label="Доходы" actual={totalIncomeActual} planned={totalIncomePlanned} color="green" />
-        <SummaryCard label="Обязат." actual={totalMandatoryActual} planned={totalMandatoryPlanned} color="orange" />
-        <SummaryCard label="Текущие" actual={totalCurrentActual} planned={totalCurrentPlanned} color="red" />
+        <SummaryCard label="Доходы" actual={totalIncomeActual} planned={totalIncomePlanned} gap={incomeShortfall} color="green" />
+        <SummaryCard label="Обязат." actual={totalMandatoryActual} planned={totalMandatoryPlanned} gap={mandatoryOverspend} color="orange" />
+        <SummaryCard label="Текущие" actual={totalCurrentActual} planned={totalCurrentPlanned} gap={currentOverspend} color="red" />
       </div>
 
       {/* Category sections */}
@@ -343,20 +361,17 @@ export default function FactView({
   )
 }
 
-function SummaryCard({ label, actual, planned, color }: { label: string; actual: number; planned: number; color: 'green' | 'orange' | 'red' }) {
+function SummaryCard({ label, actual, planned, gap, color }: { label: string; actual: number; planned: number; gap: number; color: 'green' | 'orange' | 'red' }) {
   const colors = { green: 'text-green-400', orange: 'text-orange-400', red: 'text-red-400' }
   const isOver = color !== 'green' && planned > 0 && actual > planned
-  const diff = color === 'green' ? actual - planned : planned - actual
-  const hasPlan = planned > 0
   return (
     <div className="bg-gray-200 dark:bg-gray-800 rounded-xl p-2.5 text-center border border-gray-300 dark:border-gray-700/50">
       <div className="text-gray-600 dark:text-gray-400 text-xs mb-1">{label}</div>
       <div className={`font-bold text-xs ${isOver ? 'text-red-400' : colors[color]}`}>{fmt(actual)}</div>
-      {hasPlan && (
-        <div className={`text-xs mt-0.5 font-medium ${color === 'green' ? diff >= 0 ? 'text-green-400' : 'text-red-400' : isOver ? 'text-red-400' : 'text-gray-600 dark:text-gray-400'}`}>
-          {color === 'green'
-            ? diff >= 0 ? `+${fmt(diff)}` : `−${fmt(Math.abs(diff))}`
-            : isOver ? `перерасх. ${fmt(Math.abs(diff))}` : `ост. ${fmt(diff)}`}
+      {gap > 0 && (
+        <div className="mt-1 text-red-400 leading-tight">
+          <div className="text-[10px] opacity-80">{color === 'green' ? 'не хватает' : 'перерасход'}</div>
+          <div className="text-xs font-medium whitespace-nowrap">{fmt(gap)}</div>
         </div>
       )}
     </div>
