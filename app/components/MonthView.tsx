@@ -289,13 +289,8 @@ export default function FactView({
         <SummaryCard label="Текущие" actual={totalCurrentActual} planned={totalCurrentPlanned} gap={currentOverspend} color="red" />
       </div>
 
-      {/* Totals with netting (summed over all categories) */}
-      <TotalsTable rows={[
-        { label: 'Доходы', actual: totalIncomeActual, planned: totalIncomePlanned, kind: 'income' },
-        { label: 'Обязательные', actual: totalMandatoryActual, planned: totalMandatoryPlanned, kind: 'expense' },
-        { label: 'Текущие', actual: totalCurrentActual, planned: totalCurrentPlanned, kind: 'expense' },
-        { label: 'Всего расходов', actual: totalExpenseActual, planned: totalExpensePlanned, kind: 'expense', bold: true },
-      ]} />
+      {/* Total of overspent amounts only */}
+      <OverspendTotals mandatory={mandatoryOverspend} current={currentOverspend} />
 
       {/* Category sections */}
       <CategorySection title="💰 ДОХОДЫ" titleColor="text-green-400" lineColor="bg-green-900/40" barColor="green"
@@ -369,43 +364,27 @@ export default function FactView({
   )
 }
 
-type TotalsRow = { label: string; actual: number; planned: number; kind: 'income' | 'expense'; bold?: boolean }
-
-// Суммарные итоги по всем категориям (с взаимозачётом). В отличие от карточек выше, где
-// считается только недобор/перерасход по отдельным категориям.
-function TotalsTable({ rows }: { rows: TotalsRow[] }) {
-  const num = (v: number) => Math.abs(Math.round(v * 100) / 100).toLocaleString('ru-RU')
+// Общая сумма только перерасходов (категории, где факт выше плана), без взаимозачёта с экономией.
+// Если перерасхода нет — блок не показывается.
+function OverspendTotals({ mandatory, current }: { mandatory: number; current: number }) {
+  const total = Math.round((mandatory + current) * 100) / 100
+  if (total <= 0) return null
+  const num = (v: number) => (v > 0 ? v.toLocaleString('ru-RU') + ' ₸' : '—')
   return (
-    <div className="bg-gray-200 dark:bg-gray-800 rounded-xl p-3 mb-5 border border-gray-300 dark:border-gray-700/50">
-      <div className="text-gray-600 dark:text-gray-400 text-xs font-bold mb-2">Итого за месяц, ₸</div>
-      <table className="w-full text-xs">
-        <thead>
-          <tr className="text-gray-500">
-            <th className="text-left font-normal pb-1" />
-            <th className="text-right font-normal pb-1">Факт</th>
-            <th className="text-right font-normal pb-1">План</th>
-            <th className="text-right font-normal pb-1">Разница</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map(r => {
-            const hasPlan = r.planned > 0
-            // "+" — в вашу пользу: доходов больше плана или расходов меньше плана
-            const diff = Math.round((r.kind === 'income' ? r.actual - r.planned : r.planned - r.actual) * 100) / 100
-            return (
-              <tr key={r.label} className={r.bold ? 'border-t border-gray-300 dark:border-gray-700 font-bold' : ''}>
-                <td className={`py-1 text-left ${r.bold ? 'pt-1.5' : ''} text-gray-700 dark:text-gray-300`}>{r.label}</td>
-                <td className="py-1 text-right text-gray-900 dark:text-white whitespace-nowrap">{num(r.actual)}</td>
-                <td className="py-1 text-right text-gray-600 dark:text-gray-400 whitespace-nowrap">{hasPlan ? num(r.planned) : '—'}</td>
-                <td className={`py-1 text-right whitespace-nowrap ${!hasPlan ? 'text-gray-500' : diff >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                  {hasPlan ? `${diff >= 0 ? '+' : '−'}${num(diff)}` : '—'}
-                </td>
-              </tr>
-            )
-          })}
-        </tbody>
-      </table>
-      <div className="text-gray-500 text-[10px] mt-2">Разница: «+» — в вашу пользу (доходов больше / расходов меньше плана)</div>
+    <div className="bg-red-900/10 rounded-xl p-3 mb-5 border border-red-800/30">
+      <div className="text-gray-600 dark:text-gray-400 text-xs font-bold mb-2">Перерасход за месяц</div>
+      <div className="flex justify-between text-xs py-0.5">
+        <span className="text-gray-700 dark:text-gray-300">Обязательные</span>
+        <span className={mandatory > 0 ? 'text-red-400' : 'text-gray-500'}>{num(mandatory)}</span>
+      </div>
+      <div className="flex justify-between text-xs py-0.5">
+        <span className="text-gray-700 dark:text-gray-300">Текущие</span>
+        <span className={current > 0 ? 'text-red-400' : 'text-gray-500'}>{num(current)}</span>
+      </div>
+      <div className="flex justify-between text-sm font-bold border-t border-red-800/30 mt-1.5 pt-1.5">
+        <span className="text-gray-900 dark:text-white">Всего перерасход</span>
+        <span className="text-red-400 whitespace-nowrap">{num(total)}</span>
+      </div>
     </div>
   )
 }
