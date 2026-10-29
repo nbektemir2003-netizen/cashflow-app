@@ -61,7 +61,7 @@ export default function Home() {
   useEffect(() => {
     const onError = (e: Event) => {
       const msg = String((e as CustomEvent).detail)
-      setNotifications(prev => prev.some(n => n.message === msg) ? prev : [...prev, { id: `${Date.now()}-${Math.random()}`, message: msg, categoryName: '⚠️ Не сохранилось в облаке' }])
+      setNotifications(prev => prev.some(n => n.message === msg) ? prev : [...prev, { id: `${Date.now()}-${Math.random()}`, message: msg, categoryName: '⚠️ Ошибка сохранения' }])
     }
     window.addEventListener('cloud-sync-error', onError)
     return () => window.removeEventListener('cloud-sync-error', onError)

@@ -47,14 +47,25 @@ export async function cloudSavePlan(userId: string, plans: MonthlyPlans): Promis
   return reportError('план', error)
 }
 
+// Supabase отдаёт максимум 1000 строк за запрос — читаем страницами, иначе при длинной
+// истории самые свежие операции (сортировка по возрастанию) обрезались бы.
+const PAGE_SIZE = 1000
+
 export async function cloudLoadTransactions(userId: string): Promise<Transaction[] | null> {
-  const { data, error } = await supabase
-    .from('cashflow_transactions')
-    .select('id, category_id, amount, timestamp, note, account_id')
-    .eq('user_id', userId)
-    .order('timestamp', { ascending: true })
-  if (error) return null
-  return (data || []).map(row => ({
+  const rows: any[] = []
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from('cashflow_transactions')
+      .select('id, category_id, amount, timestamp, note, account_id')
+      .eq('user_id', userId)
+      .order('timestamp', { ascending: true })
+      .order('id', { ascending: true })
+      .range(from, from + PAGE_SIZE - 1)
+    if (error) return null
+    rows.push(...(data || []))
+    if (!data || data.length < PAGE_SIZE) break
+  }
+  return rows.map(row => ({
     id: row.id,
     categoryId: row.category_id,
     amount: row.amount,
@@ -144,10 +155,17 @@ export async function cloudSaveAccounts(userId: string, accounts: Account[]): Pr
 }
 
 export async function cloudLoadTransfers(userId: string): Promise<Transfer[] | null> {
-  const { data, error } = await supabase.from('cashflow_transfers')
-    .select('id, from_account_id, to_account_id, amount, timestamp, note').eq('user_id', userId)
-  if (error) return null
-  return (data || []).map(r => ({ id: r.id, fromAccountId: r.from_account_id, toAccountId: r.to_account_id, amount: r.amount, timestamp: r.timestamp, note: r.note ?? undefined }))
+  const rows: any[] = []
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await supabase.from('cashflow_transfers')
+      .select('id, from_account_id, to_account_id, amount, timestamp, note').eq('user_id', userId)
+      .order('timestamp', { ascending: true }).order('id', { ascending: true })
+      .range(from, from + PAGE_SIZE - 1)
+    if (error) return null
+    rows.push(...(data || []))
+    if (!data || data.length < PAGE_SIZE) break
+  }
+  return rows.map(r => ({ id: r.id, fromAccountId: r.from_account_id, toAccountId: r.to_account_id, amount: r.amount, timestamp: r.timestamp, note: r.note ?? undefined }))
 }
 export async function cloudSaveTransfer(userId: string, t: Transfer): Promise<boolean> {
   const { error } = await supabase.from('cashflow_transfers').upsert({ id: t.id, user_id: userId, from_account_id: t.fromAccountId, to_account_id: t.toAccountId, amount: t.amount, timestamp: t.timestamp, note: t.note || null })

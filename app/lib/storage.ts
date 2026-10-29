@@ -1,6 +1,20 @@
 import { AnnualPlan, Transaction, Category, Account, Transfer, RecurringPayment } from './types'
 import { DEFAULT_CATEGORIES } from './data'
 
+// Запись в localStorage может бросить исключение (приватный режим, переполнение, запрет
+// сайтовых данных). Раньше это обрывало обработчик ДО отправки в облако: сумма на экране
+// менялась, но нигде не сохранялась и пропадала после обновления страницы.
+function safeSet(key: string, value: string): void {
+  try {
+    localStorage.setItem(key, value)
+  } catch (e) {
+    console.error('[storage] не удалось записать', key, e)
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('cloud-sync-error', { detail: `память браузера (${key}): ${(e as Error)?.message ?? e}` }))
+    }
+  }
+}
+
 const PLAN_KEY = 'cashflow_annual_plan'         // legacy
 const MONTHLY_PLANS_KEY = 'cashflow_monthly_plans'
 const TRANSACTIONS_KEY = 'cashflow_transactions'
@@ -58,7 +72,7 @@ export function getMonthlyPlans(): MonthlyPlans {
 }
 
 export function saveMonthlyPlans(plans: MonthlyPlans): void {
-  localStorage.setItem(MONTHLY_PLANS_KEY, JSON.stringify(plans))
+  safeSet(MONTHLY_PLANS_KEY, JSON.stringify(plans))
 }
 
 export function getTransactions(): Transaction[] {
@@ -70,7 +84,7 @@ export function getTransactions(): Transaction[] {
 }
 
 export function saveTransactions(transactions: Transaction[]): void {
-  localStorage.setItem(TRANSACTIONS_KEY, JSON.stringify(transactions))
+  safeSet(TRANSACTIONS_KEY, JSON.stringify(transactions))
 }
 
 export function getOpeningBalances(): Record<string, number> {
@@ -82,7 +96,7 @@ export function getOpeningBalances(): Record<string, number> {
 }
 
 export function saveOpeningBalances(balances: Record<string, number>): void {
-  localStorage.setItem(BALANCES_KEY, JSON.stringify(balances))
+  safeSet(BALANCES_KEY, JSON.stringify(balances))
 }
 
 export function monthKey(year: number, month: number): string {
@@ -109,7 +123,7 @@ export function getStoredCategories(): Category[] {
 }
 
 export function saveStoredCategories(categories: Category[]): void {
-  localStorage.setItem(CATEGORIES_KEY, JSON.stringify(categories))
+  safeSet(CATEGORIES_KEY, JSON.stringify(categories))
 }
 
 export function getAccounts(): Account[] {
@@ -120,7 +134,7 @@ export function getAccounts(): Account[] {
   } catch { return DEFAULT_ACCOUNTS }
 }
 export function saveAccounts(accounts: Account[]): void {
-  localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accounts))
+  safeSet(ACCOUNTS_KEY, JSON.stringify(accounts))
 }
 
 export function getTransfers(): Transfer[] {
@@ -131,7 +145,7 @@ export function getTransfers(): Transfer[] {
   } catch { return [] }
 }
 export function saveTransfers(transfers: Transfer[]): void {
-  localStorage.setItem(TRANSFERS_KEY, JSON.stringify(transfers))
+  safeSet(TRANSFERS_KEY, JSON.stringify(transfers))
 }
 
 export function getRecurring(): RecurringPayment[] {
@@ -142,7 +156,7 @@ export function getRecurring(): RecurringPayment[] {
   } catch { return [] }
 }
 export function saveRecurring(recurring: RecurringPayment[]): void {
-  localStorage.setItem(RECURRING_KEY, JSON.stringify(recurring))
+  safeSet(RECURRING_KEY, JSON.stringify(recurring))
 }
 
 // Legacy — kept for edge-case migration only
@@ -173,7 +187,7 @@ export function getSyncQueue(): SyncQueue {
 }
 
 function saveSyncQueue(q: SyncQueue): void {
-  try { localStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(q)) } catch {}
+  try { safeSet(SYNC_QUEUE_KEY, JSON.stringify(q)) } catch {}
 }
 
 const OPPOSITE: Partial<Record<keyof SyncQueue, keyof SyncQueue>> = { txUp: 'txDel', txDel: 'txUp', trUp: 'trDel', trDel: 'trUp' }
