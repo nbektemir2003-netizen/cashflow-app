@@ -426,6 +426,34 @@ export default function Home() {
     return prevOpening + prevIncome - prevExpense + transfersIn - transfersOut + depositTopUpsCredit
   }
 
+  // Как плановые суммы месяца меняют общий остаток (сумма по всем счетам). Пополнение
+  // депозита — расход только на бумаге: деньги остаются в общей сумме, поэтому не вычитаем.
+  const getPlannedNet = (year: number, month: number): number => {
+    const amounts = monthlyPlans[monthKey(year, month)]?.amounts || {}
+    let net = 0
+    for (const c of categories) {
+      const v = amounts[c.id] || 0
+      if (c.group === 'income') net += v
+      else if (c.id !== DEPOSIT_TOPUP_CATEGORY_ID) net -= v
+    }
+    return net
+  }
+
+  // Остаток на начало месяца для вкладки "План". Для текущего и прошлых месяцев — фактический
+  // перенос; для будущих — прогноз: плановый конец предыдущего месяца. Для прошлых лет
+  // не считаем (null): getOpeningBalance там не имеет базового случая и ушёл бы в бесконечную рекурсию.
+  const getPlannedOpening = (year: number, month: number): number | null => {
+    const nowYear = now.getFullYear()
+    if (year < nowYear) return null
+    const key = monthKey(year, month)
+    if (openingBalances[key] !== undefined) return openingBalances[key]
+    if (year === nowYear && month <= now.getMonth()) return getOpeningBalance(year, month)
+    const prevM = month === 0 ? 11 : month - 1
+    const prevY = month === 0 ? year - 1 : year
+    const prevOpening = getPlannedOpening(prevY, prevM)
+    return prevOpening === null ? null : prevOpening + getPlannedNet(prevY, prevM)
+  }
+
   const prevMonth = () => {
     if (currentMonth === 0) { setCurrentMonth(11); setCurrentYear(y => y - 1) }
     else setCurrentMonth(m => m - 1)
@@ -566,6 +594,7 @@ export default function Home() {
             currentYear={currentYear}
             currentMonth={currentMonth}
             categories={categories}
+            getPlannedOpening={getPlannedOpening}
             onChange={handlePlansChange}
             onCategoriesChange={handleCategoriesChange}
           />

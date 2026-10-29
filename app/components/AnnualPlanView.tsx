@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { fmt, CURRENCY, MONTHS_RU_SHORT, MONTHS_RU } from '../lib/data'
+import { fmt, CURRENCY, MONTHS_RU_SHORT, MONTHS_RU, DEPOSIT_TOPUP_CATEGORY_ID } from '../lib/data'
 import { AnnualPlan, Category, CategoryGroup } from '../lib/types'
 import { MonthlyPlans, MonthPlan, monthKey } from '../lib/storage'
 import CategoryModal from './CategoryModal'
@@ -12,6 +12,7 @@ interface Props {
   currentYear: number
   currentMonth: number
   categories: Category[]
+  getPlannedOpening: (year: number, month: number) => number | null
   onChange: (plans: MonthlyPlans) => void
   onCategoriesChange: (cats: Category[]) => void
 }
@@ -19,7 +20,7 @@ interface Props {
 type EditCatModal = { cat?: Category; group: CategoryGroup } | null
 
 export default function AnnualPlanView({
-  monthlyPlans, transactions, currentYear, currentMonth, categories, onChange, onCategoriesChange,
+  monthlyPlans, transactions, currentYear, currentMonth, categories, getPlannedOpening, onChange, onCategoriesChange,
 }: Props) {
   const [selYear, setSelYear] = useState(currentYear)
   const [selMonth, setSelMonth] = useState(currentMonth)
@@ -140,6 +141,12 @@ export default function AnnualPlanView({
   const totalExpense = totalMandatory + totalCurrent
   const plannedSavings = totalIncome - totalExpense
 
+  // Плановый конечный остаток = остаток на начало месяца + доходы − расходы.
+  // Пополнение депозита не вычитаем: деньги остаются на счетах, просто переходят на "Депозит".
+  const plannedDeposit = localAmounts[DEPOSIT_TOPUP_CATEGORY_ID] || 0
+  const plannedOpening = getPlannedOpening(selYear, selMonth)
+  const plannedClosing = plannedOpening === null ? null : plannedOpening + totalIncome - (totalExpense - plannedDeposit)
+
   const nowYear = new Date().getFullYear()
   const nowMonth = new Date().getMonth()
 
@@ -224,6 +231,25 @@ export default function AnnualPlanView({
           <div className="text-gray-900 dark:text-white font-bold text-xs">{fmt(Math.abs(plannedSavings))}</div>
         </div>
       </div>
+
+      {plannedClosing !== null && plannedOpening !== null && (
+        <div className={`rounded-xl p-3 mb-4 border ${plannedClosing >= 0 ? 'bg-green-900/20 border-green-800/40' : 'bg-red-900/20 border-red-800/40'}`}>
+          <div className="flex items-center justify-between gap-3">
+            <div className="text-gray-600 dark:text-gray-400 text-xs">Конечный остаток (план)</div>
+            <div className={`font-bold text-base ${plannedClosing >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+              {fmt(plannedClosing)}
+            </div>
+          </div>
+          <div className="text-gray-500 text-xs mt-1">
+            На начало месяца {fmt(plannedOpening)} + доходы {fmt(totalIncome)} − расходы {fmt(totalExpense - plannedDeposit)}
+          </div>
+          {plannedDeposit > 0 && (
+            <div className="text-gray-500 text-xs mt-0.5">
+              Депозит {fmt(plannedDeposit)} не вычитается — деньги остаются на счетах
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Sections */}
       <PlanSection
