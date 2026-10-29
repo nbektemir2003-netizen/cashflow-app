@@ -32,12 +32,48 @@ export default function AnnualPlanView({
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
   const [expandedNote, setExpandedNote] = useState<string | null>(null)
 
+  // Несохранённые правки: пишем в хранилище автоматически (через паузу после ввода,
+  // при смене месяца/года и при уходе со вкладки), иначе ввод терялся без нажатия "Сохранить".
+  const dirty = useRef(false)
+  const latest = useRef({ localAmounts, localNotes, selKey, monthlyPlans, onChange })
+  latest.current = { localAmounts, localNotes, selKey, monthlyPlans, onChange }
+
+  const persist = () => {
+    if (!dirty.current) return
+    dirty.current = false
+    const cur = latest.current
+    const monthPlan: MonthPlan = { amounts: cur.localAmounts, notes: cur.localNotes }
+    cur.onChange({ ...cur.monthlyPlans, [cur.selKey]: monthPlan })
+    setSaved(true)
+    setTimeout(() => setSaved(false), 2500)
+  }
+
+  // Смена месяца/года: сначала сохраняем правки текущего месяца
+  const switchMonth = (m: number) => { persist(); setSelMonth(m) }
+  const switchYear = (delta: number) => { persist(); setSelYear(y => y + delta) }
+
   useEffect(() => {
     setLocalAmounts(monthlyPlans[selKey]?.amounts || {})
     setLocalNotes(monthlyPlans[selKey]?.notes || {})
     setSaved(false)
     setExpandedNote(null)
-  }, [selKey, monthlyPlans])
+  }, [selKey])
+
+  // Плановые данные пришли/изменились снаружи (например, загрузка из облака) —
+  // подтягиваем, но не затираем то, что пользователь ещё вводит
+  useEffect(() => {
+    if (dirty.current) return
+    setLocalAmounts(monthlyPlans[selKey]?.amounts || {})
+    setLocalNotes(monthlyPlans[selKey]?.notes || {})
+  }, [monthlyPlans])
+
+  useEffect(() => {
+    if (!dirty.current) return
+    const t = setTimeout(persist, 700)
+    return () => clearTimeout(t)
+  }, [localAmounts, localNotes])
+
+  useEffect(() => () => persist(), [])
 
   const incomeCategories = categories.filter(c => c.group === 'income')
   const mandatoryCategories = categories.filter(c => c.group === 'mandatory')
@@ -46,19 +82,19 @@ export default function AnnualPlanView({
   const handleAmountChange = (categoryId: string, value: string) => {
     const num = parseFloat(value.replace(/\s/g, '').replace(',', '.'))
     setLocalAmounts(prev => ({ ...prev, [categoryId]: isNaN(num) || num < 0 ? 0 : num }))
+    dirty.current = true
     setSaved(false)
   }
 
   const handleNoteChange = (categoryId: string, value: string) => {
     setLocalNotes(prev => ({ ...prev, [categoryId]: value }))
+    dirty.current = true
     setSaved(false)
   }
 
   const handleSave = () => {
-    const monthPlan: MonthPlan = { amounts: localAmounts, notes: localNotes }
-    onChange({ ...monthlyPlans, [selKey]: monthPlan })
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2500)
+    dirty.current = true
+    persist()
   }
 
   const handleCopyFromPrevious = () => {
@@ -72,6 +108,7 @@ export default function AnnualPlanView({
     }
     setLocalAmounts({ ...prev.amounts })
     setLocalNotes({ ...prev.notes })
+    dirty.current = true
     setSaved(false)
   }
 
@@ -93,6 +130,7 @@ export default function AnnualPlanView({
     delete newNotes[catId]
     setLocalAmounts(newAmounts)
     setLocalNotes(newNotes)
+    dirty.current = true
     setDeleteConfirm(null)
   }
 
@@ -114,9 +152,9 @@ export default function AnnualPlanView({
     <div>
       {/* Year selector */}
       <div className="flex items-center justify-between mb-3">
-        <button onClick={() => setSelYear(y => y - 1)} className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 text-gray-900 dark:text-white flex items-center justify-center">←</button>
+        <button onClick={() => switchYear(-1)} className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 text-gray-900 dark:text-white flex items-center justify-center">←</button>
         <span className="text-gray-900 dark:text-white font-bold">{selYear}</span>
-        <button onClick={() => setSelYear(y => y + 1)} className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 text-gray-900 dark:text-white flex items-center justify-center">→</button>
+        <button onClick={() => switchYear(1)} className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 text-gray-900 dark:text-white flex items-center justify-center">→</button>
       </div>
 
       {/* Month pills */}
@@ -128,7 +166,7 @@ export default function AnnualPlanView({
           return (
             <button
               key={m}
-              onClick={() => setSelMonth(m)}
+              onClick={() => switchMonth(m)}
               className={`py-1.5 rounded-xl text-xs font-semibold transition-all ${
                 isSelected
                   ? 'bg-green-500 text-white shadow-lg shadow-green-500/30'
