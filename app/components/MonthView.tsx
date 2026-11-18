@@ -1,8 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { MONTHS_RU, fmt, DEPOSIT_TOPUP_CATEGORY_ID } from '../lib/data'
-import { DEPOSIT_ACCOUNT_ID } from '../lib/storage'
+import { MONTHS_RU, fmt } from '../lib/data'
 import { AnnualPlan, Transaction, Category, Account, Transfer, RecurringPayment } from '../lib/types'
 import AmountModal from './AmountModal'
 import EditTransactionModal from './EditTransactionModal'
@@ -15,10 +14,8 @@ interface Props {
   annualPlan: AnnualPlan
   transactions: Transaction[]
   openingBalance: number
-  accountOpeningBalances: Record<string, number>
   categories: Category[]
   accounts: Account[]
-  transfers: Transfer[]
   recurring: RecurringPayment[]
   onAddTransaction: (t: Transaction) => void
   onDeleteTransaction: (id: string) => void
@@ -38,8 +35,8 @@ interface AddModalState {
 }
 
 export default function FactView({
-  year, month, annualPlan, transactions, openingBalance, accountOpeningBalances, categories,
-  accounts, transfers, recurring,
+  year, month, annualPlan, transactions, openingBalance, categories,
+  accounts, recurring,
   onAddTransaction, onDeleteTransaction, onEditTransaction,
   onSetOpeningBalance, onAddTransfer, onSaveRecurring,
   onPrevMonth, onNextMonth,
@@ -66,30 +63,6 @@ export default function FactView({
 
   const getCategoryTx = (categoryId: string) =>
     monthTx.filter(t => t.categoryId === categoryId).sort((a, b) => b.timestamp - a.timestamp)
-
-  const getAccountBalance = (accountId: string) => {
-    const isDefault = accounts[0]?.id === accountId
-    const incomeIds = new Set(incomeCategories.map(c => c.id))
-    const acctTx = monthTx.filter(t => t.accountId === accountId || (isDefault && !t.accountId))
-    const income = acctTx.filter(t => incomeIds.has(t.categoryId)).reduce((s, t) => s + t.amount, 0)
-    const expense = acctTx.filter(t => !incomeIds.has(t.categoryId)).reduce((s, t) => s + t.amount, 0)
-    const monthTransfers = transfers.filter(t => {
-      const d = new Date(t.timestamp)
-      return d.getFullYear() === year && d.getMonth() === month
-    })
-    const tIn = monthTransfers.filter(t => t.toAccountId === accountId).reduce((s, t) => s + t.amount, 0)
-    const tOut = monthTransfers.filter(t => t.fromAccountId === accountId).reduce((s, t) => s + t.amount, 0)
-    // Категория "Депозит" списывается как обычный расход со своего счёта (карта/наличные),
-    // но при этом сумма также зачисляется на счёт "Депозит" — как будто это перевод.
-    const depositTopUps = accountId === DEPOSIT_ACCOUNT_ID
-      ? monthTx
-          .filter(t => t.categoryId === DEPOSIT_TOPUP_CATEGORY_ID && t.accountId !== DEPOSIT_ACCOUNT_ID)
-          .reduce((s, t) => s + Math.abs(t.amount), 0)
-      : 0
-    // Каждый счёт (в т.ч. депозит) хранит и переносит свой баланс независимо от других счетов
-    const startBalance = accountOpeningBalances[accountId] ?? 0
-    return startBalance + income - expense + tIn - tOut + depositTopUps
-  }
 
   const totalIncomeActual = incomeCategories.reduce((s, c) => s + getActual(c.id), 0)
   const totalMandatoryActual = mandatoryCategories.reduce((s, c) => s + getActual(c.id), 0)
@@ -118,11 +91,6 @@ export default function FactView({
   }, 0))
   const mandatoryOverspend = overspend(mandatoryCategories)
   const currentOverspend = overspend(currentCategories)
-
-  // Сумма именно по счетам (а не opening + доходы − расходы), иначе категория
-  // "Депозит" (расход, который зачисляется на счёт "Депозит") дважды уходит в минус:
-  // один раз как обычный расход, а сумма, зачисленная на депозит, не возвращается обратно.
-  const closingBalance = accounts.reduce((sum, acc) => sum + getAccountBalance(acc.id), 0)
 
   const now = new Date()
   const isCurrentMonth = year === now.getFullYear() && month === now.getMonth()
@@ -192,31 +160,6 @@ export default function FactView({
         <button onClick={onNextMonth} className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 flex items-center justify-center text-gray-900 dark:text-white text-lg transition-colors">→</button>
       </div>
 
-      {/* Accounts */}
-      {accounts.length > 0 && (
-        <div className="mb-4">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-gray-500 text-xs font-semibold uppercase tracking-wide">Счета</span>
-            <button onClick={() => setShowTransfer(true)}
-              className="text-xs text-blue-400 hover:text-blue-300 bg-blue-900/20 hover:bg-blue-900/40 px-2.5 py-1 rounded-lg transition-colors border border-blue-800/30">
-              ↔ Перевод
-            </button>
-          </div>
-          <div className="grid grid-cols-3 gap-2">
-            {accounts.map(acc => {
-              const bal = getAccountBalance(acc.id)
-              return (
-                <div key={acc.id} className="bg-gray-200 dark:bg-gray-800 rounded-xl p-2.5 text-center border border-gray-300 dark:border-gray-700/50">
-                  <div className="text-xl mb-1">{acc.icon}</div>
-                  <div className="text-gray-600 dark:text-gray-400 text-xs">{acc.name}</div>
-                  <div className={`font-bold text-xs mt-0.5 ${bal >= 0 ? 'text-gray-900 dark:text-white' : 'text-red-400'}`}>{fmt(bal)}</div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      )}
-
       {/* Pending recurring payments */}
       {pendingRecurring.length > 0 && (
         <div className="mb-4 bg-yellow-900/20 border border-yellow-800/30 rounded-xl p-3">
@@ -256,9 +199,10 @@ export default function FactView({
         </div>
       )}
 
-      {/* Balance row */}
-      <div className="grid grid-cols-2 gap-3 mb-4">
-        <div className="bg-gray-200 dark:bg-gray-800 rounded-xl p-3 border border-gray-300 dark:border-gray-700/50">
+      {/* Начальный остаток (редактируемый) + перевод. Остатки по счетам и конечный остаток
+          теперь в закреплённой полосе в шапке. */}
+      <div className="flex items-stretch gap-2 mb-4">
+        <div className="flex-1 bg-gray-200 dark:bg-gray-800 rounded-xl p-3 border border-gray-300 dark:border-gray-700/50">
           <div className="text-gray-600 dark:text-gray-400 text-xs mb-1">Начальный остаток</div>
           {editingBalance ? (
             <div className="flex items-center gap-2">
@@ -275,11 +219,13 @@ export default function FactView({
           )}
           <div className="text-gray-400 dark:text-gray-600 text-xs mt-0.5">перенос с пред. месяца</div>
         </div>
-        <div className={`rounded-xl p-3 border ${closingBalance >= 0 ? 'bg-green-900/20 border-green-800/40' : 'bg-red-900/20 border-red-800/40'}`}>
-          <div className="text-gray-600 dark:text-gray-400 text-xs mb-1">Конечный остаток</div>
-          <div className={`font-bold text-sm ${closingBalance >= 0 ? 'text-green-400' : 'text-red-400'}`}>{fmt(closingBalance)}</div>
-          <div className="text-gray-400 dark:text-gray-600 text-xs mt-0.5">начало + доходы − расходы</div>
-        </div>
+        {accounts.length > 0 && (
+          <button onClick={() => setShowTransfer(true)}
+            className="text-xs text-blue-400 hover:text-blue-300 bg-blue-900/20 hover:bg-blue-900/40 px-3 rounded-xl transition-colors border border-blue-800/30 flex flex-col items-center justify-center gap-0.5">
+            <span className="text-base">↔</span>
+            <span>Перевод</span>
+          </button>
+        )}
       </div>
 
       {/* Summary */}

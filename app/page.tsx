@@ -33,6 +33,8 @@ import HistoryView from './components/HistoryView'
 import NotificationToast from './components/NotificationToast'
 import AuthModal from './components/AuthModal'
 import OnboardingModal from './components/OnboardingModal'
+import BalancesBar from './components/BalancesBar'
+import { computeAccountBalance } from './lib/balances'
 
 type Tab = 'fact' | 'plan' | 'report' | 'history'
 type AppMode = 'checking' | 'auth' | 'app'
@@ -488,6 +490,14 @@ export default function Home() {
   const accountOpeningBalances = Object.fromEntries(
     accounts.map(a => [a.id, getAccountOpeningBalance(a.id, currentYear, currentMonth)]),
   )
+  // Остатки по счетам и итог на конец выбранного месяца — для закреплённой полосы в шапке
+  const accountBalances = Object.fromEntries(
+    accounts.map(a => [a.id, computeAccountBalance({
+      accountId: a.id, accounts, categories, transactions, transfers,
+      year: currentYear, month: currentMonth, startBalance: accountOpeningBalances[a.id] ?? 0,
+    })]),
+  )
+  const totalClosing = accounts.reduce((sum, a) => sum + (accountBalances[a.id] ?? 0), 0)
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-white flex flex-col">
@@ -568,6 +578,11 @@ export default function Home() {
             </button>
           ))}
         </div>
+
+        {/* Закреплённые остатки — видны при прокрутке во вкладках План / Месяц / Отчёт */}
+        {activeTab !== 'history' && (
+          <BalancesBar accounts={accounts} balances={accountBalances} opening={currentOpeningBalance} closing={totalClosing} />
+        )}
       </header>
 
       {/* Content */}
@@ -579,10 +594,8 @@ export default function Home() {
             annualPlan={currentPlan}
             transactions={transactions}
             openingBalance={currentOpeningBalance}
-            accountOpeningBalances={accountOpeningBalances}
             categories={categories}
             accounts={accounts}
-            transfers={transfers}
             recurring={recurring}
             onAddTransaction={handleAddTransaction}
             onDeleteTransaction={handleDeleteTransaction}
